@@ -8,7 +8,7 @@
   // What the separate window needs to draw the same map.
   const shared = {
     points: [], shapes: [], invalid: [], columns: { shape: `Shape`, lat: `Latitude`, lng: `Longitude` },
-    selectedId: null, config: normalizeConfig({}), message: ``
+    selectedId: null, config: normalizeConfig({}), message: ``, hint: ``
   };
 
   // The separate map window.
@@ -169,7 +169,9 @@
     const usable = mapped && (mapping.Shape || (mapping.Latitude && mapping.Longitude));
     if (!usable) {
       shared.message = t(`needColumns`);
+      shared.hint = ``;
       app.setDataMessage(shared.message);
+      app.setEmptyMessage(``);
       app.setData({ points: [], shapes: [], invalid: [], empty: [], columns: shared.columns });
       link.send(`mapbuilder:state`, { ...shared, points: [], shapes: [], invalid: [] });
       return;
@@ -179,8 +181,12 @@
     shared.shapes = shapes;
     shared.invalid = invalid;
     shared.columns = { shape: mapping.Shape, lat: mapping.Latitude, lng: mapping.Longitude };
-    shared.message = points.length || shapes.length || invalid.length ? `` : t(`noData`);
+    // Nothing to draw yet is not an error: the map stays, with a hint above it.
+    shared.message = ``;
+    shared.hint = points.length || shapes.length || invalid.length ? `` :
+      mapping.Shape ? t(`noShapeYet`, { shape: mapping.Shape }) : t(`noPinYet`, { lat: mapping.Latitude, lng: mapping.Longitude });
     app.setDataMessage(shared.message);
+    app.setEmptyMessage(shared.hint);
     app.setData({ points, shapes, invalid, empty, columns: shared.columns });
     link.send(`mapbuilder:state`, { ...shared });
   });

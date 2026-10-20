@@ -31,6 +31,7 @@
       columns = payload.columns || columns;
       app.setConfig(normalizeConfig(payload.config));
       app.setDataMessage(String(payload.message || ``));
+      app.setEmptyMessage(String(payload.hint || ``));
       app.setData({ points: payload.points || [], shapes: payload.shapes || [], invalid: payload.invalid || [], columns });
       app.select(payload.selectedId === undefined ? null : payload.selectedId, true);
     } else if (type === `mapbuilder:select` && payload) {

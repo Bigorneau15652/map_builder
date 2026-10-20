@@ -44,6 +44,7 @@
       this.config = normalizeConfig({});
       this.dataMessage = ``;
       this.invalidMessage = ``;
+      this.emptyMessage = ``;
       this.wanted = { id: null, pending: false };
       this.docked = false;
 
@@ -260,7 +261,7 @@
     }
 
     showBanner() {
-      const text = [this.keyMessage, this.invalidMessage].filter(Boolean).join(` `);
+      const text = [this.keyMessage, this.emptyMessage, this.invalidMessage].filter(Boolean).join(` `);
       this.banner.textContent = text;
       this.banner.hidden = !text;
       this.engine.invalidateSize();
@@ -330,7 +331,14 @@
       if (this.wanted.id !== null) this.select(this.wanted.id, true);
     }
 
-    // Message that replaces the map when there is nothing to draw (empty string to clear it).
+    // A hint shown in the banner above the map when the table has nothing to draw yet: the map
+    // stays visible, so that shapes can be drawn on it (empty string to clear it).
+    setEmptyMessage(text) {
+      this.emptyMessage = text;
+      this.showBanner();
+    }
+
+    // Message that replaces the map when the widget cannot work (empty string to clear it).
     setDataMessage(text) {
       this.dataMessage = text;
       if (!this.docked) this.showMessage(text, false);
