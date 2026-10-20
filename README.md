@@ -16,7 +16,7 @@ Status: work in progress. Reading and display of shapes and pins are done. The d
 - Two-way selection: selecting a row centres the map on it, clicking a shape or a pin selects the row in Grist. The zoom chosen by the user is never changed: if the next shape is larger, zoom out yourself.
 - Nested shapes stay usable: large shapes are drawn first, small ones on top, so a building can be clicked inside its site.
 - Filters are the ones of Grist: the widget only shows the rows that its section shows (filter by colour, by name, link with another widget with "Select by").
-- A single base map, chosen from a catalogue of 21 layers of the IGN, three open maps (OpenStreetMap, CyclOSM, OpenTopoMap) and your own maps (see [MAPS.md](MAPS.md)). A click shows the map at once, OK saves the choice, Cancel puts the previous map back.
+- A single base map, chosen from a catalogue of 11 layers of the IGN, three open maps (OpenStreetMap, CyclOSM, OpenTopoMap) and your own maps (see [MAPS.md](MAPS.md)). A click shows the map at once, OK saves the choice, Cancel puts the previous map back.
 - A transparency slider for the fill of the shapes, at the bottom left.
 - The buttons and sliders fade after three seconds without movement over the map. The view (centre and zoom) is kept in the browser of each user.
 - The map can be opened in a separate window, for example on a second screen.
@@ -80,7 +80,7 @@ Un système d'information géographique léger pour [Grist](https://www.getgrist
 - Sélection dans les deux sens : sélectionner une ligne centre la carte dessus, cliquer une forme ou une épingle sélectionne la ligne dans Grist. Le zoom choisi par l'utilisateur n'est jamais modifié : si la forme suivante est plus grande, il suffit de dézoomer.
 - Les formes imbriquées restent utilisables : les grandes formes sont dessinées en premier, les petites par-dessus, si bien qu'un bâtiment reste cliquable dans son site.
 - Les filtres sont ceux de Grist : le widget n'affiche que les lignes que sa section affiche (filtre par couleur, par nom, lien avec un autre widget par « Sélectionner par »).
-- Un seul fond de carte, choisi dans un catalogue de 21 couches de l'IGN, trois cartes libres (OpenStreetMap, CyclOSM, OpenTopoMap) et vos propres cartes (voir [MAPS.md](MAPS.md)). Un clic affiche aussitôt la carte, OK enregistre le choix, Annuler remet la carte précédente.
+- Un seul fond de carte, choisi dans un catalogue de 11 couches de l'IGN, trois cartes libres (OpenStreetMap, CyclOSM, OpenTopoMap) et vos propres cartes (voir [MAPS.md](MAPS.md)). Un clic affiche aussitôt la carte, OK enregistre le choix, Annuler remet la carte précédente.
 - Une réglette de transparence du remplissage des formes, en bas à gauche.
 - Les boutons et les réglettes s'effacent après trois secondes sans mouvement sur la carte. La vue (position et zoom) est conservée dans le navigateur de chaque utilisateur.
 - La carte peut s'ouvrir dans une fenêtre séparée, par exemple sur un second écran.
