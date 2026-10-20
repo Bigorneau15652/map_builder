@@ -218,3 +218,9 @@ body.catalog-window { background: #ffffff; }
 .handle.middle { cursor: copy; }
 .handle.rotate { border-radius: 50%; border-color: #1b5e20; background: #c8e6c9; cursor: grab; }
 .handle.rotate:active { cursor: grabbing; }
+
+/* While the drawing mode is on, a coloured frame goes around the map. */
+#stage.editing::after {
+  content: ""; position: absolute; inset: 0; z-index: 1250; pointer-events: none;
+  border: 4px solid #d81b60;
+}

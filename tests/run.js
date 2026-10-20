@@ -38,6 +38,13 @@ const ROWS = [
   const after = await page.evaluate(() => document.querySelector(`.zoom-slider input`).value);
   check(`selecting a shape keeps the zoom`, before === after, `${before} -> ${after}`);
   check(`selecting a shape opens its label`, (await page.locator(`.leaflet-popup .popup-title`).textContent()) === `Batiment A`);
+  const layers = await page.evaluate(() => {
+    const z = (selector) => Number(getComputedStyle(document.querySelector(selector)).zIndex);
+    const popup = document.querySelector(`.leaflet-popup`).getBoundingClientRect();
+    const top = document.elementFromPoint(popup.left + popup.width / 2, popup.top + popup.height / 2);
+    return { popup: z(`.leaflet-popup-pane`), shapes: z(`.leaflet-overlay-pane`), pins: z(`.leaflet-marker-pane`), onTop: Boolean(top && top.closest(`.leaflet-popup`)) };
+  });
+  check(`labels are drawn above the shapes and the pins`, layers.popup > layers.shapes && layers.popup > layers.pins && layers.onTop, JSON.stringify(layers));
   check(`label keeps the line break`, (await page.locator(`.leaflet-popup .popup-desc br`).count()) === 1);
   await page.screenshot({ path: path.join(OUT, `builder-2-selected.png`) });
 

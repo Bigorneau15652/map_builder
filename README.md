@@ -13,8 +13,9 @@ Status: usable. Reading, display, the drawing mode and a ready-made file of the 
 - One object per row: a shape (a GeoJSON polygon stored in the Shape column), a pin (Latitude and Longitude columns) or both.
 - A drawing mode (pencil button at the top right) to create, reshape, move and erase shapes on the map. Each shape drawn becomes a row of the table, and each change is written to it.
 - The fill colour comes from a Color column (HEX code such as `#4A90D9`). The border is the same colour, darker.
-- A label (name and description) shows when the row is selected or the shape is clicked. Labels are plain text.
+- A label (name and description) shows when the row is selected or the shape is clicked. Labels are plain text, drawn above the shapes and the pins.
 - Two-way selection: selecting a row centres the map on it, clicking a shape or a pin selects the row in Grist. The zoom chosen by the user is never changed: if the next shape is larger, zoom out yourself.
+- A selected shape gets a more opaque fill; its border does not change.
 - Nested shapes stay usable: large shapes are drawn first, small ones on top, so a building can be clicked inside its site.
 - Filters are the ones of Grist: the widget only shows the rows that its section shows (filter by colour, by name, link with another widget with "Select by").
 - A single base map, chosen from a catalogue of 11 layers of the IGN, three open maps (OpenStreetMap, CyclOSM, OpenTopoMap) and your own maps (see [MAPS.md](MAPS.md)). A click shows the map at once, OK saves the choice, Cancel puts the previous map back.
@@ -26,7 +27,7 @@ Status: usable. Reading, display, the drawing mode and a ready-made file of the 
 
 ### Drawing mode
 
-The pencil button opens a toolbar on the left of the map. The tools are: select and reshape, rectangle, oval, free shape, eraser, snapping, undo and leave. A line at the top of the map explains the active tool.
+The pencil button turns the drawing mode on and off; while it is on, a coloured frame goes around the map. A toolbar on the left of the map has four tools (rectangle, oval, free shape, eraser) and the snapping switch. With no tool pressed, the editor is in its normal mode: select a shape, reshape it, move it. A second click on the pressed tool, the Esc key, or the end of a drawing goes back to the normal mode. A line at the top of the map explains what can be done.
 
 - Rectangle and oval: drag on the map. Hold Shift for a square or a circle.
 - Free shape: click each point, then click the first point, double-click or press Enter to close the shape. Backspace removes the last point. Esc or a right click cancels the drawing in progress (the keys work once the widget has the focus: click on the map first).
@@ -34,7 +35,7 @@ The pencil button opens a toolbar on the left of the map. The tools are: select 
 - Eraser: click a shape to erase it: the Shape cell is emptied and the row stays in the table with its name, its colour and its other columns, ready to be drawn again. The Delete key also erases the selected shape.
 - Space bar held down, then drag: move the map while a tool is active. The mouse wheel zooms as usual.
 - Snapping: the cursor is attracted by the corners of neighbouring shapes, so two buildings that touch share their corner. The shapes stay independent rows. Hold Alt to ignore snapping for a moment.
-- Undo: the button (or Ctrl+Z while the widget has the focus) undoes the last 20 actions. The Undo button of Grist works too.
+- Undo: Ctrl+Z (Cmd+Z on a Mac) while the widget has the focus undoes the last 20 actions. The Undo button of Grist works too.
 - A new shape asks for its name, gets the colour `#4A90D9` and is written as a new row. Change its colour in the table.
 - You can also start from the table: type the names (and colours) of the rows first, select a row that has no shape yet, and draw. The shape is then written to that row, without asking for a name. The help line tells which row will receive the shape.
 
@@ -80,7 +81,7 @@ If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index
 - `js/app.js`: the map screen. `js/engine.js`: the map, the shapes and the pins. `js/editor.js`: the drawing mode. `js/geometry.js`: reading of the Shape column. `js/records.js`: reading and checking of the rows. `js/menu.js`: catalogue, "Other" dialog, transparency slider. `js/catalog.js`: maps. `js/config.js`: saved settings. `js/colors.js`, `js/i18n.js`, `js/window-link.js`.
 - `data/ign-layers.js`: the IGN layers. `vendor`: Leaflet and Leaflet.markercluster.
 
-Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.3.1`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
+Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.4.0`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
 
 Licence: MIT. Leaflet is under the BSD 2-Clause licence and Leaflet.markercluster under the MIT licence.
 
@@ -95,8 +96,9 @@ Un système d'information géographique léger pour [Grist](https://www.getgrist
 - Un objet par ligne : une forme (un polygone GeoJSON dans la colonne Shape), une épingle (colonnes Latitude et Longitude) ou les deux.
 - Un mode dessin (bouton crayon en haut à droite) pour créer, retoucher, déplacer et effacer des formes sur la carte. Chaque forme dessinée devient une ligne du tableau, et chaque modification y est écrite.
 - La couleur de remplissage vient d'une colonne Color (code HEX comme `#4A90D9`). La bordure est de la même couleur, plus foncée.
-- Une étiquette (nom et description) s'affiche à la sélection de la ligne ou au clic sur la forme. Les étiquettes sont du texte simple.
+- Une étiquette (nom et description) s'affiche à la sélection de la ligne ou au clic sur la forme. Les étiquettes sont du texte simple, dessinées au-dessus des formes et des épingles.
 - Sélection dans les deux sens : sélectionner une ligne centre la carte dessus, cliquer une forme ou une épingle sélectionne la ligne dans Grist. Le zoom choisi par l'utilisateur n'est jamais modifié : si la forme suivante est plus grande, il suffit de dézoomer.
+- Une forme sélectionnée a un remplissage plus opaque ; sa bordure ne change pas.
 - Les formes imbriquées restent utilisables : les grandes formes sont dessinées en premier, les petites par-dessus, si bien qu'un bâtiment reste cliquable dans son site.
 - Les filtres sont ceux de Grist : le widget n'affiche que les lignes que sa section affiche (filtre par couleur, par nom, lien avec un autre widget par « Sélectionner par »).
 - Un seul fond de carte, choisi dans un catalogue de 11 couches de l'IGN, trois cartes libres (OpenStreetMap, CyclOSM, OpenTopoMap) et vos propres cartes (voir [MAPS.md](MAPS.md)). Un clic affiche aussitôt la carte, OK enregistre le choix, Annuler remet la carte précédente.
@@ -108,7 +110,7 @@ Un système d'information géographique léger pour [Grist](https://www.getgrist
 
 ### Mode dessin
 
-Le bouton crayon ouvre une barre d'outils à gauche de la carte. Les outils sont : sélection et retouche, rectangle, ovale, forme libre, gomme, accrochage, annuler et quitter. Une ligne en haut de la carte explique l'outil actif.
+Le bouton crayon active et désactive le mode dessin ; quand il est actif, un cadre de couleur entoure la carte. Une barre d'outils à gauche de la carte a quatre outils (rectangle, ovale, forme libre, gomme) et l'interrupteur d'accrochage. Sans outil enfoncé, l'éditeur est dans son mode normal : sélectionner une forme, la retoucher, la déplacer. Un second clic sur l'outil enfoncé, la touche Échap ou la fin d'un tracé ramènent au mode normal. Une ligne en haut de la carte explique ce qu'on peut faire.
 
 - Rectangle et ovale : glissez sur la carte. Maintenez Maj pour un carré ou un cercle.
 - Forme libre : cliquez chaque point, puis cliquez sur le premier point, double-cliquez ou appuyez sur Entrée pour fermer la forme. Retour arrière retire le dernier point. Échap ou un clic droit annule le tracé en cours (les touches fonctionnent quand le widget a le focus : cliquez d'abord sur la carte).
@@ -116,7 +118,7 @@ Le bouton crayon ouvre une barre d'outils à gauche de la carte. Les outils sont
 - Gomme : cliquez une forme pour l'effacer : la cellule Shape est vidée et la ligne reste dans le tableau avec son nom, sa couleur et ses autres colonnes, prête à être redessinée. La touche Suppr efface aussi la forme sélectionnée.
 - Barre espace maintenue, puis glisser : déplace la carte pendant qu'un outil est actif. La molette zoome comme d'habitude.
 - Accrochage : le curseur est attiré par les sommets des formes voisines, si bien que deux bâtiments qui se touchent partagent leur sommet. Les formes restent des lignes indépendantes. Maintenez Alt pour ignorer l'accrochage un instant.
-- Annuler : le bouton (ou Ctrl+Z quand le widget a le focus) annule les 20 dernières actions. Le bouton Annuler de Grist fonctionne aussi.
+- Annuler : Ctrl+Z (Cmd+Z sur Mac) quand le widget a le focus annule les 20 dernières actions. Le bouton Annuler de Grist fonctionne aussi.
 - Une nouvelle forme demande son nom, reçoit la couleur `#4A90D9` et est écrite comme une nouvelle ligne. Changez sa couleur dans le tableau.
 - Vous pouvez aussi partir du tableau : saisissez d'abord les noms (et les couleurs) des lignes, sélectionnez une ligne qui n'a pas encore de forme, puis dessinez. La forme est alors écrite dans cette ligne, sans demander de nom. La ligne d'aide indique quelle ligne recevra la forme.
 
@@ -155,6 +157,6 @@ Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur G
 
 ### Publier une modification
 
-Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.3.1` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
+Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.4.0` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
 
 Licence : MIT. Leaflet est sous licence BSD 2-Clause et Leaflet.markercluster sous licence MIT.
