@@ -177,7 +177,9 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await normalMode();
   await page.evaluate((id) => window.__grist.selectRow(id), square.id);
   await page.waitForTimeout(500);
-  const cursors = () => page.evaluate(() => [...document.querySelectorAll(`.handle.corner, .handle.side`)].map((el) => getComputedStyle(el).cursor));
+  // A cursor is a pictogram followed by a keyword (the cursor used if the picture fails).
+  const kindOf = (cursor) => cursor.split(`,`).pop().trim();
+  const cursors = () => page.evaluate(() => [...document.querySelectorAll(`.handle.corner, .handle.side`)].map((el) => getComputedStyle(el).cursor)).then((list) => list.map(kindOf));
   check(`handles have resize cursors`, JSON.stringify(await cursors()) === JSON.stringify([`nesw-resize`, `nwse-resize`, `nesw-resize`, `nwse-resize`, `ew-resize`, `ew-resize`, `ns-resize`, `ns-resize`]), JSON.stringify(await cursors()));
   // The effective cursor over a handle of a shape of the table, the mouse coming from the shape.
   const ringOfSquare = ring((await rows(page)).find((row) => row.id === square.id));
@@ -187,7 +189,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   check(`the move cursor shows over a shape of the table`, await page.evaluate(() => window.__map.getContainer().classList.contains(`edit-move`)));
   const cornerHandle = await page.locator(`.handle.corner`).nth(2).boundingBox();
   await page.mouse.move(cornerHandle.x + 7, cornerHandle.y + 7);
-  check(`a handle keeps its resize cursor over the shape`, (await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [cornerHandle.x + 7, cornerHandle.y + 7])) === `nesw-resize`);
+  check(`a handle keeps its resize cursor over the shape`, kindOf(await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [cornerHandle.x + 7, cornerHandle.y + 7])) === `nesw-resize`);
   check(`every handle says what it does in a tooltip`, await page.evaluate(() => [...document.querySelectorAll(`.handle`)].every((el) => el.title.length > 5)));
   check(`the rotation handle has its own cursor`, /^url\(.*svg\+xml/.test(await page.locator(`.handle.rotate`).evaluate((el) => getComputedStyle(el).cursor)));
 
@@ -328,7 +330,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   for (const index of [0, 2, 4, 6]) {
     const box = await page.locator(`.handle.corner, .handle.side`).nth(index).boundingBox();
     await page.mouse.move(box.x + 7, box.y + 7);
-    handleCursors.push(await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [box.x + 7, box.y + 7]));
+    handleCursors.push(kindOf(await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [box.x + 7, box.y + 7])));
   }
   check(`the handles show resize cursors`, JSON.stringify(handleCursors) === JSON.stringify([`nesw-resize`, `nesw-resize`, `ew-resize`, `ns-resize`]), JSON.stringify(handleCursors));
   const rotateBox = await page.locator(`.handle.rotate`).boundingBox();
