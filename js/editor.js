@@ -16,6 +16,7 @@
   const MAX_UNDO = 20;
   const ROTATE_HANDLE_PIXELS = 32;
   const ROTATE_STEP_DEGREES = 15;
+  const MAX_RESULT_POINTS = 50000;
   const TOOLS = [`select`, `rectangle`, `ellipse`, `polygon`, `erase`];
 
   // Positions are kept as [lat, lng] pairs. Sizes are computed in the projection of the map
@@ -26,6 +27,11 @@
     return [round(latlng.lat), round(latlng.lng)];
   };
   const copyPolygons = (polygons) => polygons.map((polygon) => polygon.map((ring) => ring.map((p) => [p[0], p[1]])));
+
+  // Shapes as the polygon-clipping library reads them (a list of polygons, [lng, lat], closed
+  // rings), and back.
+  const toClip = (polygons) => polygons.map((polygon) => polygon.map((ring) => [...ring.map(([lat, lng]) => [lng, lat]), [ring[0][1], ring[0][0]]]));
+  const fromClip = (multi) => multi.map((polygon) => polygon.map((ring) => ring.slice(0, -1).map(([lng, lat]) => [round(lat), round(lng)])));
 
   // Turns a vector by an angle (radians, counter-clockwise in the projection).
   const turn = (x, y, angle) => L.point(x * Math.cos(angle) - y * Math.sin(angle), x * Math.sin(angle) + y * Math.cos(angle));
@@ -118,6 +124,8 @@
       this.snapMarker = null;
       this.lastMouse = null;
       this.emptyRows = new Map(); // rows of the table that have no shape yet: id -> name
+      this.fusion = false;       // the next shape drawn is added to, or taken from, the selected shape
+      this.busy = false;         // a choice is being made: the map is left alone
 
       this.onMouseDown = (event) => this.pointerDown(event);
       this.onMouseMove = (event) => this.pointerMove(event);
@@ -125,7 +133,9 @@
       this.onDoubleClick = (event) => this.doubleClick(event);
       this.onKeyDown = (event) => this.keyDown(event);
       this.onKeyUp = (event) => this.keyUp(event);
-      this.onMapClick = () => { if (this.tool === `select`) this.selectShape(null, true); };
+      // A click on the empty map only drops the handles: the row of the table stays selected,
+      // so that the next shape drawn can still go to it.
+      this.onMapClick = () => { if (this.tool === `select` && !this.busy) this.selectShape(null, false); };
       this.onContextMenu = (event) => this.contextMenu(event);
       this.onZoomEnd = () => this.refresh();
     }
@@ -153,6 +163,7 @@
       } else {
         this.cancelWork();
         this.clearHandles();
+        this.fusion = false;
         this.engine.editHandler = null;
         this.container.removeEventListener(`mousedown`, this.onMouseDown, true);
         this.container.removeEventListener(`dblclick`, this.onDoubleClick, true);
@@ -187,6 +198,10 @@
       if (!this.active) return;
       const target = this.targetRow();
       const drawing = this.tool === `rectangle` || this.tool === `ellipse` || this.tool === `polygon`;
+      if (this.fusion) {
+        this.hooks.onHint(t(`hint_fusion`));
+        return;
+      }
       this.hooks.onHint(t(`hint_${this.tool}`) + (drawing && target ? ` ${t(`hintTarget`, { name: target.name || `#${target.id}` })}` : ``));
     }
 
@@ -199,6 +214,60 @@
     setEmptyRows(rows) {
       this.emptyRows = new Map(rows.map((row) => [row.id, row.name]));
       this.refreshHint();
+    }
+
+    // The fusion button: the next shape drawn is not a new row, it is combined with the selected one.
+    setFusion(on) {
+      if (on && !this.engine.shapes.has(this.engine.selectedId)) {
+        this.hooks.onMessage(t(`fusionNeedsShape`));
+        return;
+      }
+      this.fusion = on;
+      this.hooks.onTool(this.tool);
+      this.refreshHint();
+    }
+
+    // Combines the selected shape (1) with the shape just drawn (2). The three results are
+    // computed once; the person sees each of them on the map, then validates one or gives up.
+    async fuse(second) {
+      const id = this.engine.selectedId;
+      const entry = this.engine.shapes.get(id);
+      if (!entry) return;
+      const original = copyPolygons(entry.shape.polygons);
+      const { kind, rotation } = entry.shape;
+      let results;
+      try {
+        results = {
+          add: fromClip(polygonClipping.union(toClip(original), toClip(second))),
+          first: fromClip(polygonClipping.difference(toClip(original), toClip(second))),
+          second: fromClip(polygonClipping.difference(toClip(second), toClip(original)))
+        };
+      } catch (error) {
+        this.hooks.onMessage(t(`fusionFailed`));
+        return;
+      }
+      const countPoints = (polygons) => polygons.reduce((sum, polygon) => sum + polygon.reduce((inner, ring) => inner + ring.length, 0), 0);
+      for (const [name, polygons] of Object.entries(results)) {
+        if (countPoints(polygons) > MAX_RESULT_POINTS) results[name] = [];
+      }
+      const outline = L.polygon(second, { color: `#111111`, weight: 2, dashArray: `6 4`, fill: false, interactive: false }).addTo(this.layer);
+      const preview = (operation) => {
+        const polygons = results[operation];
+        if (!polygons.length) return false;
+        this.engine.previewShape(id, polygons, 0);
+        return true;
+      };
+      this.busy = true;
+      this.clearHandles();
+      const operation = await this.hooks.askFusion(preview);
+      this.busy = false;
+      this.layer.clearLayers();
+      if (!operation) {
+        this.engine.previewShape(id, original, rotation);
+        this.refresh();
+        return;
+      }
+      await this.commit(id, `polygon`, results[operation], original, 0, rotation, kind);
     }
 
     toggleSnap() {
@@ -258,13 +327,14 @@
 
     // Clicks on a shape, forwarded by the map (see MapEngine.editHandler).
     shapeClick(id) {
+      if (this.busy) return;
       if (this.tool === `erase`) this.erase(id);
       else if (this.tool === `select`) this.selectShape(id, true);
     }
 
     // A press on a shape with the select tool starts moving it.
     shapeDown(id, event) {
-      if (this.tool !== `select` || this.spaceDown || event.originalEvent.button !== 0) return;
+      if (this.busy || this.tool !== `select` || this.spaceDown || event.originalEvent.button !== 0) return;
       L.DomEvent.stop(event.originalEvent);
       const entry = this.engine.shapes.get(id);
       if (!entry) return;
@@ -339,7 +409,7 @@
     }
 
     pointerDown(event) {
-      if (!this.active || this.spaceDown || event.button !== 0 || this.tool === `select` || this.tool === `erase`) return;
+      if (!this.active || this.busy || this.spaceDown || event.button !== 0 || this.tool === `select` || this.tool === `erase`) return;
       if (event.target.closest(`.leaflet-popup, .leaflet-marker-icon`)) return;
       event.preventDefault();
       event.stopPropagation();
@@ -459,6 +529,13 @@
       const text = serializeShape(kind, polygons, rotation);
       // Once a shape is drawn (or given up), the editor goes back to the select mode.
       this.setTool(`select`);
+      if (this.fusion) {
+        this.fusion = false;
+        this.hooks.onTool(this.tool);
+        this.refreshHint();
+        await this.fuse(polygons);
+        return;
+      }
       const target = this.targetRow();
       if (target) {
         await this.run(async () => {
@@ -703,10 +780,10 @@
     }
 
     // Writes a changed shape to the table, once the gesture is over.
-    async commit(id, kind, polygons, original, rotation, originalRotation) {
+    async commit(id, kind, polygons, original, rotation, originalRotation, originalKind = kind) {
       const rounded = polygons.map((polygon) => polygon.map((ring) => ring.map(([lat, lng]) => [round(lat), round(lng)])));
       this.engine.previewShape(id, rounded, rotation);
-      const before = serializeShape(kind, original, originalRotation);
+      const before = serializeShape(originalKind, original, originalRotation);
       const saved = await this.run(async () => {
         await this.store.update(id, serializeShape(kind, rounded, rotation));
         this.push({ undo: () => this.store.update(this.resolve(id), before) });
@@ -765,7 +842,7 @@
     // ------------------------------------------------------------ Keyboard
 
     keyDown(event) {
-      if (!this.active || isTyping(event.target)) return;
+      if (!this.active || isTyping(event.target) || (this.busy && event.key !== `Escape`)) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === `z`) {
         event.preventDefault();
         this.undo();
@@ -776,7 +853,9 @@
           this.applyCursor();
         }
       } else if (event.key === `Escape`) {
+        if (this.busy) return;
         if (this.drawing || this.moving || this.working) this.cancelWork();
+        else if (this.fusion) this.setFusion(false);
         else if (this.tool !== `select`) this.setTool(`select`);
         else this.selectShape(null, false);
       } else if (event.key === `Enter`) {

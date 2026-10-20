@@ -49,6 +49,7 @@
   const ICON_ELLIPSE = [`M3 12a9 6 0 1 0 18 0a9 6 0 1 0-18 0`];
   const ICON_POLYGON = [`M5 18l3-12 9 3 3 9z`];
   const ICON_ERASE = [`M20 20H8l-4-4a1.5 1.5 0 0 1 0-2l9-9a1.5 1.5 0 0 1 2 0l5 5a1.5 1.5 0 0 1 0 2l-6 6`, `M7 11l6 6`];
+  const ICON_FUSION = [`M3 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0`, `M9 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0`];
   const ICON_SNAP = [`M12 3v4`, `M12 17v4`, `M3 12h4`, `M17 12h4`, `M12 10a2 2 0 1 0 .01 0z`];
 
   function newId() {
@@ -317,6 +318,6 @@
 
   window.mapBuilderMenu = {
     CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK, ICON_EDIT, ICON_RECTANGLE,
-    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_SNAP
+    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_FUSION, ICON_SNAP
   };
 })();

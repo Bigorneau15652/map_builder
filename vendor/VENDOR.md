@@ -5,4 +5,8 @@ the trailing sourceMappingURL comment was removed from the minified files (the m
 - Leaflet.markercluster 1.5.3 (MIT): leaflet.markercluster.js, MarkerCluster.css, MarkerCluster.Default.css.
   https://www.npmjs.com/package/leaflet.markercluster/v/1.5.3
 
+- polygon-clipping 0.15.7 (MIT): polygon-clipping.umd.min.js, used to add and subtract shapes.
+  https://github.com/mfogel/polygon-clipping (file `dist/polygon-clipping.umd.min.js` of the release 0.15.7; it contains the
+  splaytree and robust-predicates libraries, see the licence text in the file `LICENSE`).
+
 The images of Leaflet (layers control, default marker) are not shipped: the widget uses neither.

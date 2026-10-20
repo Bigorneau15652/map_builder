@@ -187,7 +187,7 @@ body.catalog-window { background: #ffffff; }
 #edit-bar[hidden] { display: none; }
 .tool[aria-pressed="true"] { background: #1c5d8c; color: #ffffff; border-color: #123f61; }
 .tool:disabled { background: #e4e7eb; color: #7b8794; cursor: default; }
-.bar-gap { height: 8px; }
+
 
 /* Help line and messages: solid colours, wrapped, never truncated. */
 #edit-hint, #toast {
@@ -224,3 +224,17 @@ body.catalog-window { background: #ffffff; }
   content: ""; position: absolute; inset: 0; z-index: 1250; pointer-events: none;
   border: 4px solid #d81b60;
 }
+
+/* The choice of a fusion: a small panel at the bottom of the map, the map stays visible. */
+#fusion-panel {
+  position: absolute; z-index: 1300; left: 44px; right: 44px; bottom: 44px;
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px;
+  background: #ffffff; color: var(--ink); border: 2px solid #d81b60; border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3); font-size: 13px; line-height: 1.4;
+  white-space: normal; overflow-wrap: anywhere;
+}
+#fusion-panel .choice { display: flex; gap: 6px; align-items: flex-start; cursor: pointer; }
+#fusion-panel .buttons { display: flex; justify-content: flex-end; gap: 8px; }
+#fusion-panel .error { margin: 0; color: #8a1c1c; font-weight: 600; }
+#fusion-panel button:disabled { opacity: 1; background: #e4e7eb; color: #52606d; border-color: #9aa5b1; cursor: default; }
+.bar-gap { height: 14px; }

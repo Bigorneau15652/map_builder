@@ -6,13 +6,16 @@
   const { normalizeConfig } = window.mapBuilderConfig;
   const {
     CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK, ICON_EDIT, ICON_RECTANGLE,
-    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_SNAP
+    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_FUSION, ICON_SNAP
   } = window.mapBuilderMenu;
   // With no tool pressed, the editor is in its normal mode: select a shape, reshape it, move it.
-  const TOOL_BUTTONS = [
-    [`rectangle`, ICON_RECTANGLE, `toolRectangle`], [`ellipse`, ICON_ELLIPSE, `toolEllipse`],
-    [`polygon`, ICON_POLYGON, `toolPolygon`], [`erase`, ICON_ERASE, `toolErase`]
+  const SHAPE_BUTTONS = [
+    [`rectangle`, ICON_RECTANGLE, `toolRectangle`], [`ellipse`, ICON_ELLIPSE, `toolEllipse`], [`polygon`, ICON_POLYGON, `toolPolygon`]
   ];
+  // The version of the widget, read from the address of this script (?v=...), for the tooltip.
+  const VERSION = (() => {
+    try { return new URL(document.currentScript.src).searchParams.get(`v`) || ``; } catch { return ``; }
+  })();
   const TOAST_MS = 7000;
   // The row that Grist sends back after a click on the map is recognised for this long.
   const MAP_SELECTION_MS = 3000;
@@ -97,10 +100,11 @@
         onHint: (text) => { this.hint.textContent = text; this.hint.hidden = !text; },
         onMessage: (text) => this.toast(text),
         askName: (defaultName) => this.askName(defaultName),
+        askFusion: (preview) => this.askFusion(preview),
         selectRow: (id) => this.selectFromMap(id)
       });
       this.editButton = h(`button`, {
-        type: `button`, class: `tool`, title: t(`editMode`), [`aria-label`]: t(`editMode`), [`aria-pressed`]: `false`,
+        type: `button`, class: `tool`, title: `${t(`editMode`)}${VERSION ? ` (version ${VERSION})` : ``}`, [`aria-label`]: t(`editMode`), [`aria-pressed`]: `false`,
         onclick: () => this.toggleEditing()
       }, icon(ICON_EDIT));
       tools.append(this.editButton);
@@ -130,12 +134,49 @@
         [`aria-pressed`]: pressed === null ? null : String(pressed), disabled, onclick
       }, icon(paths));
       this.editBar.textContent = ``;
+      const gap = () => h(`span`, { class: `bar-gap`, [`aria-hidden`]: `true` });
       this.editBar.append(
         // A second click on the active tool goes back to the normal mode.
-        ...TOOL_BUTTONS.map(([id, paths, key]) => button(key, paths, tool === id, () => this.editor.setTool(tool === id ? `select` : id), false)),
-        h(`span`, { class: `bar-gap`, [`aria-hidden`]: `true` }),
+        ...SHAPE_BUTTONS.map(([id, paths, key]) => button(key, paths, tool === id, () => this.editor.setTool(tool === id ? `select` : id), false)),
+        gap(),
+        button(`toolErase`, ICON_ERASE, tool === `erase`, () => this.editor.setTool(tool === `erase` ? `select` : `erase`), false),
+        gap(),
+        button(`toolFusion`, ICON_FUSION, this.editor.fusion, () => this.editor.setFusion(!this.editor.fusion), false),
+        gap(),
         button(`toolSnap`, ICON_SNAP, this.editor.snap, () => { this.editor.toggleSnap(); this.renderEditBar(tool); }, false)
       );
+    }
+
+    // The choice offered after the second shape of a fusion is drawn: the result of 1 + 2, 1 - 2
+    // or 2 - 1 is shown on the map as the choice changes. Resolves to `add`, `first`, `second`, or
+    // null when the person gives up. preview(operation) returns false when that result is empty.
+    askFusion(preview) {
+      return new Promise((resolve) => {
+        const choices = [[`add`, `fusionAdd`], [`first`, `fusionFirstMinus`], [`second`, `fusionSecondMinus`]];
+        const message = h(`p`, { class: `error`, role: `alert` });
+        const ok = h(`button`, { type: `submit`, class: `action`, text: t(`ok`) });
+        let current = `add`;
+        const show = () => {
+          const fine = preview(current);
+          message.textContent = fine ? `` : t(`fusionEmpty`);
+          ok.disabled = !fine;
+        };
+        const close = (value) => { panel.remove(); document.removeEventListener(`keydown`, onKey, true); resolve(value); };
+        const onKey = (event) => { if (event.key === `Escape`) { event.stopPropagation(); close(null); } };
+        const panel = h(`form`, { id: `fusion-panel`, role: `dialog`, [`aria-label`]: t(`fusionTitle`), onsubmit: (event) => { event.preventDefault(); if (!ok.disabled) close(current); } },
+          h(`strong`, { text: t(`fusionTitle`) }),
+          ...choices.map(([value, key]) => h(`label`, { class: `choice` },
+            h(`input`, { type: `radio`, name: `fusion-choice`, value, checked: value === current, onchange: () => { current = value; show(); } }),
+            ` ${t(key)}`)),
+          message,
+          h(`div`, { class: `buttons` },
+            h(`button`, { type: `button`, class: `outline`, text: t(`cancel`), onclick: () => close(null) }),
+            ok));
+        document.addEventListener(`keydown`, onKey, true);
+        this.stage.append(panel);
+        show();
+        ok.focus();
+      });
     }
 
     // A short message at the bottom of the map (a refused write, an erased shape...).
