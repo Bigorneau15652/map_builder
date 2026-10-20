@@ -27,6 +27,8 @@ Status: usable. Reading, display, the drawing mode and a ready-made file of the 
 
 ### Drawing mode
 
+A table with no shape yet (empty Shape column) still shows the map, with a hint above it: click the pencil, choose a row of the table and draw its shape.
+
 The pencil button turns the drawing mode on and off; while it is on, a coloured frame goes around the map. A toolbar on the left of the map has, in separate groups, the three shape tools (rectangle, oval, free shape), the eraser, the fusion button and the snapping switch. With no tool pressed, the editor is in its normal mode: select a shape, reshape it, move it. A second click on the pressed tool, the Esc key, or the end of a drawing goes back to the normal mode. A line at the top of the map explains what can be done.
 
 - Rectangle and oval: drag on the map. Hold Shift for a square or a circle.
@@ -82,7 +84,7 @@ The widget loads `grist-plugin-api.js` from `grist.numerique.gouv.fr`. If your G
 - `js/app.js`: the map screen. `js/engine.js`: the map, the shapes and the pins. `js/editor.js`: the drawing mode. `vendor`: Leaflet, Leaflet.markercluster and polygon-clipping (to add and subtract shapes). `js/geometry.js`: reading of the Shape column. `js/records.js`: reading and checking of the rows. `js/menu.js`: catalogue, "Other" dialog, transparency slider. `js/catalog.js`: maps. `js/config.js`: saved settings. `js/colors.js`, `js/i18n.js`, `js/window-link.js`.
 - `data/ign-layers.js`: the IGN layers. `vendor`: Leaflet and Leaflet.markercluster.
 
-Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.7.4`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
+Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.7.5`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
 
 Licence: MIT. Leaflet is under the BSD 2-Clause licence, Leaflet.markercluster and polygon-clipping under the MIT licence.
 
@@ -110,6 +112,8 @@ Un système d'information géographique léger pour [Grist](https://www.getgrist
 - Interface en français et en anglais, selon la langue du navigateur.
 
 ### Mode dessin
+
+Un tableau sans aucune forme (colonne Shape vide) affiche quand même la carte, avec une indication au-dessus : cliquez sur le crayon, choisissez une ligne du tableau et dessinez sa forme.
 
 Le bouton crayon active et désactive le mode dessin ; quand il est actif, un cadre de couleur entoure la carte. Une barre d'outils à gauche de la carte a, en groupes séparés, les trois outils de forme (rectangle, ovale, forme libre), la gomme, le bouton de fusion et l'interrupteur d'accrochage. Sans outil enfoncé, l'éditeur est dans son mode normal : sélectionner une forme, la retoucher, la déplacer. Un second clic sur l'outil enfoncé, la touche Échap ou la fin d'un tracé ramènent au mode normal. Une ligne en haut de la carte explique ce qu'on peut faire.
 
@@ -159,6 +163,6 @@ Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur G
 
 ### Publier une modification
 
-Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.7.4` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
+Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.7.5` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
 
 Licence : MIT. Leaflet est sous licence BSD 2-Clause, Leaflet.markercluster et polygon-clipping sous licence MIT.

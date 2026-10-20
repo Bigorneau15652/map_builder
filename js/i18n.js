@@ -11,7 +11,8 @@
       columnColor: `Couleur (HEX ou nom)`,
 
       // Data messages
-      noData: `Aucune donnée à afficher.`,
+      noShapeYet: `Aucune forme dans la colonne « {shape} » pour l'instant. Pour en dessiner une : cliquez sur le crayon, choisissez une ligne du tableau (ou nommez une nouvelle forme), puis tracez-la sur la carte.`,
+      noPinYet: `Aucun repère à afficher : les colonnes « {lat} » et « {lng} » ne contiennent aucune coordonnée.`,
       needColumns: `Associez la colonne Name et la colonne Shape (ou les colonnes Latitude et Longitude) dans le panneau de droite, sous le niveau d'accès.`,
       shapesIgnored: `{count} ligne(s) ignorée(s) : forme illisible dans la colonne « {shape} » (exemples : {examples}). Une forme est un texte GeoJSON de type Polygon ou MultiPolygon.`,
       rowsIgnored: `{count} ligne(s) ignorée(s) : coordonnées invalides dans les colonnes « {lat} » et « {lng} » (exemples : {examples}). Vérifiez ces colonnes dans le tableau.`,
@@ -102,7 +103,8 @@
       columnShape: `Shape (GeoJSON)`,
       columnColor: `Colour (HEX or name)`,
 
-      noData: `No data to show.`,
+      noShapeYet: `No shape in column "{shape}" yet. To draw one: click the pencil, choose a row of the table (or name a new shape), then draw it on the map.`,
+      noPinYet: `No pin to show: columns "{lat}" and "{lng}" hold no coordinates.`,
       needColumns: `Map the Name column and the Shape column (or the Latitude and Longitude columns) in the right-hand panel, under the access level.`,
       shapesIgnored: `{count} row(s) ignored: unreadable shape in column "{shape}" (examples: {examples}). A shape is a GeoJSON text of type Polygon or MultiPolygon.`,
       rowsIgnored: `{count} row(s) ignored: invalid coordinates in columns "{lat}" and "{lng}" (examples: {examples}). Check these columns in the table.`,

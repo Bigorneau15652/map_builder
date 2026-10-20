@@ -83,6 +83,15 @@ const ROWS = [
   await second.page.waitForTimeout(300);
   check(`missing columns message`, /Shape/.test(await second.page.textContent(`#docked`)));
 
+  // Shape column mapped but still empty: the map stays visible, with a hint above it.
+  const blank = await open(browser, `${BASE}/index.html`);
+  await blank.page.evaluate(() => window.__grist.load([{ id: 1, Name: `A`, Shape: `` }, { id: 2, Name: `B`, Shape: null }], { Name: `Name`, Shape: `Forme` }));
+  await blank.page.waitForTimeout(400);
+  check(`empty Shape column keeps the map visible`, await blank.page.locator(`#docked`).isHidden() && await blank.page.locator(`#map`).isVisible());
+  check(`empty Shape column shows a hint naming the column`, /Forme/.test(await blank.page.textContent(`#banner`)), await blank.page.textContent(`#banner`));
+  check(`the pencil is available on an empty table`, await blank.page.locator(`#tools .tool`).count() > 0);
+  check(`no page error on an empty table`, blank.errors.length === 0, blank.errors.join(` | `));
+
   // Narrow panel and dark colour scheme.
   const narrow = await open(browser, `${BASE}/index.html`, { viewport: { width: 340, height: 520 }, colorScheme: `dark` });
   await narrow.page.evaluate(({ rows, mapping }) => window.__grist.load(rows, mapping), { rows: ROWS, mapping: MAPPING });
