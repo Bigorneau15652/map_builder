@@ -131,6 +131,9 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await page.evaluate((id) => window.__grist.selectRow(id), free.id);
   await page.waitForTimeout(500);
   check(`a free shape has point and middle handles`, (await page.locator(`.handle.vertex`).count()) === 4 && (await page.locator(`.handle.middle`).count()) === 4);
+  const pictogram = (selector) => page.locator(selector).first().evaluate((el) => /^url\(.*svg\+xml/.test(getComputedStyle(el).cursor));
+  check(`the points of a free shape have their own cursor`, await pictogram(`.handle.vertex`));
+  check(`the middle handles of a free shape have their own cursor`, await pictogram(`.handle.middle`));
   const middle = await page.locator(`.handle.middle`).first().boundingBox();
   await drag({ x: middle.x + 7, y: middle.y + 7 }, { x: middle.x + 7, y: middle.y - 30 });
   await page.waitForTimeout(400);
@@ -186,7 +189,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await page.mouse.move(cornerHandle.x + 7, cornerHandle.y + 7);
   check(`a handle keeps its resize cursor over the shape`, (await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [cornerHandle.x + 7, cornerHandle.y + 7])) === `nesw-resize`);
   check(`every handle says what it does in a tooltip`, await page.evaluate(() => [...document.querySelectorAll(`.handle`)].every((el) => el.title.length > 5)));
-  check(`the rotation handle has its own cursor`, (await page.locator(`.handle.rotate`).evaluate((el) => getComputedStyle(el).cursor)) === `grab`);
+  check(`the rotation handle has its own cursor`, /^url\(.*svg\+xml/.test(await page.locator(`.handle.rotate`).evaluate((el) => getComputedStyle(el).cursor)));
 
   // Turning a rectangle with the top handle (Shift: steps of 15 degrees).
   const squareRing = ring((await rows(page)).find((row) => row.Name === `Carre`));
@@ -330,7 +333,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   check(`the handles show resize cursors`, JSON.stringify(handleCursors) === JSON.stringify([`nesw-resize`, `nesw-resize`, `ew-resize`, `ns-resize`]), JSON.stringify(handleCursors));
   const rotateBox = await page.locator(`.handle.rotate`).boundingBox();
   await page.mouse.move(rotateBox.x + 7, rotateBox.y + 7);
-  check(`the rotation handle shows a grab cursor`, (await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [rotateBox.x + 7, rotateBox.y + 7])) === `grab`);
+  check(`the rotation handle shows its own pictogram`, /^url\(.*svg\+xml/.test(await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [rotateBox.x + 7, rotateBox.y + 7])));
   const cornerBox = await page.locator(`.handle.corner`).nth(2).boundingBox();
   await drag({ x: cornerBox.x + 7, y: cornerBox.y + 7 }, { x: cornerBox.x + 22, y: cornerBox.y - 8 });
   await page.waitForTimeout(300);

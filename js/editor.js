@@ -757,7 +757,7 @@
         };
         ring.forEach((position, index) => {
           const handle = this.makeHandle(position, `vertex`, t(`handleMove`));
-          this.setHandleCursor(handle, `move`);
+          this.setHandleCursor(handle, `point`);
           handle.on(`dragstart`, () => { this.beginWork(id, kind); });
           handle.on(`drag`, (event) => {
             const at = this.snapLatLng(event.latlng, this.lastMouse && this.lastMouse.altKey, id);
@@ -780,7 +780,7 @@
           const next = ring[(index + 1) % ring.length];
           const middle = [(position[0] + next[0]) / 2, (position[1] + next[1]) / 2];
           const handle = this.makeHandle(middle, `middle`, t(`handleAdd`));
-          this.setHandleCursor(handle, `copy`);
+          this.setHandleCursor(handle, `edge`);
           let newIndex = -1;
           handle.on(`dragstart`, () => {
             const work = this.beginWork(id, kind);
@@ -871,7 +871,7 @@
         return handle;
       });
 
-      this.setHandleCursor(rotateHandle, `grab`);
+      this.setHandleCursor(rotateHandle, `rotate`);
       rotateHandle.on(`dragstart`, () => { this.beginWork(id, kind); });
       rotateHandle.on(`drag`, (event) => {
         const mouse = this.lastMouse || {};
