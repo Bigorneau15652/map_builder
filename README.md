@@ -28,13 +28,14 @@ Status: work in progress. Reading, display and the drawing mode are done. The im
 The pencil button opens a toolbar on the left of the map. The tools are: select and reshape, rectangle, oval, free shape, eraser, snapping, undo and leave. A line at the top of the map explains the active tool.
 
 - Rectangle and oval: drag on the map. Hold Shift for a square or a circle.
-- Free shape: click each point, then click the first point, double-click or press Enter to close the shape. Backspace removes the last point, Esc cancels.
-- Reshape: select a shape (click it, or select its row). Drag a round handle to move a point, drag the small handle in the middle of a side to add a point, double-click a point to remove it. A rectangle or an oval keeps its eight handles and its kind. Drag the shape itself to move it.
+- Free shape: click each point, then click the first point, double-click or press Enter to close the shape. Backspace removes the last point. Esc or a right click cancels the drawing in progress (the keys work once the widget has the focus: click on the map first).
+- Reshape: select a shape (click it, or select its row). Drag a round handle to move a point, drag the small handle in the middle of a side to add a point, double-click a point to remove it. A rectangle or an oval keeps its eight handles and its kind: the cursor shows the direction of each handle (arrows up and down, left and right, or diagonal at the corners), and a corner dragged with Shift keeps the proportions. A round green handle above a rectangle or an oval turns it (Shift: steps of 15 degrees); the turn is saved in the shape. Drag the shape itself to move it.
 - Eraser: click a shape to delete its row. Delete also erases the selected shape.
 - Space bar held down, then drag: move the map while a tool is active. The mouse wheel zooms as usual.
 - Snapping: the cursor is attracted by the corners of neighbouring shapes, so two buildings that touch share their corner. The shapes stay independent rows. Hold Alt to ignore snapping for a moment.
 - Undo: the button (or Ctrl+Z while the widget has the focus) undoes the last 20 actions. After an erase, only the columns mapped to the widget are restored; the Undo button of Grist restores everything.
 - A new shape asks for its name, gets the colour `#4A90D9` and is written as a new row. Change its colour in the table.
+- You can also start from the table: type the names (and colours) of the rows first, select a row that has no shape yet, and draw. The shape is then written to that row, without asking for a name. The help line tells which row will receive the shape.
 
 The drawing mode needs write access: the widget asks for the access level "Full". It only uses the table it is attached to. If the table is linked to another widget ("Select by"), a new row does not get the link value: set it in the table.
 
@@ -48,7 +49,7 @@ The drawing mode needs write access: the widget asks for the access level "Full"
 | Color | Text | no |
 | Description | Text | no |
 
-The Shape column holds GeoJSON text, for example `{"type":"Feature","properties":{"kind":"rectangle"},"geometry":{"type":"Polygon","coordinates":[[[3.86,43.60],[3.89,43.60],[3.89,43.62],[3.86,43.62],[3.86,43.60]]]}}`. Coordinates are longitude then latitude, in degrees (WGS 84): the shape lands on the map without any calibration. A bare `Polygon` or `MultiPolygon` geometry is accepted too, so outlines exported from QGIS can be pasted as they are. The `kind` property (`rectangle`, `ellipse` or `polygon`) is optional.
+The Shape column holds GeoJSON text, for example `{"type":"Feature","properties":{"kind":"rectangle"},"geometry":{"type":"Polygon","coordinates":[[[3.86,43.60],[3.89,43.60],[3.89,43.62],[3.86,43.62],[3.86,43.60]]]}}`. Coordinates are longitude then latitude, in degrees (WGS 84): the shape lands on the map without any calibration. A bare `Polygon` or `MultiPolygon` geometry is accepted too, so outlines exported from QGIS can be pasted as they are. The `kind` property (`rectangle`, `ellipse` or `polygon`) and the `rotation` property (degrees, clockwise on the screen) are optional: the corners are always in the geometry.
 
 Limits, to keep the widget fast and safe: 2 million characters per cell, 50 000 vertices per shape, 500 polygons per shape. A row whose Shape cannot be read is left out, and a banner above the map names the column to check, the number of rows and a few examples.
 
@@ -108,13 +109,14 @@ Un système d'information géographique léger pour [Grist](https://www.getgrist
 Le bouton crayon ouvre une barre d'outils à gauche de la carte. Les outils sont : sélection et retouche, rectangle, ovale, forme libre, gomme, accrochage, annuler et quitter. Une ligne en haut de la carte explique l'outil actif.
 
 - Rectangle et ovale : glissez sur la carte. Maintenez Maj pour un carré ou un cercle.
-- Forme libre : cliquez chaque point, puis cliquez sur le premier point, double-cliquez ou appuyez sur Entrée pour fermer la forme. Retour arrière retire le dernier point, Échap annule.
-- Retouche : sélectionnez une forme (cliquez-la, ou sélectionnez sa ligne). Tirez une poignée ronde pour déplacer un point, tirez la petite poignée au milieu d'un côté pour ajouter un point, double-cliquez un point pour le retirer. Un rectangle ou un ovale garde ses huit poignées et son type. Tirez la forme elle-même pour la déplacer.
+- Forme libre : cliquez chaque point, puis cliquez sur le premier point, double-cliquez ou appuyez sur Entrée pour fermer la forme. Retour arrière retire le dernier point. Échap ou un clic droit annule le tracé en cours (les touches fonctionnent quand le widget a le focus : cliquez d'abord sur la carte).
+- Retouche : sélectionnez une forme (cliquez-la, ou sélectionnez sa ligne). Tirez une poignée ronde pour déplacer un point, tirez la petite poignée au milieu d'un côté pour ajouter un point, double-cliquez un point pour le retirer. Un rectangle ou un ovale garde ses huit poignées et son type : le curseur indique la direction de chaque poignée (flèches haut et bas, gauche et droite, ou en diagonale aux coins), et un coin tiré avec Maj garde les proportions. Une poignée ronde verte au-dessus d'un rectangle ou d'un ovale le fait tourner (Maj : par pas de 15 degrés) ; la rotation est enregistrée dans la forme. Tirez la forme elle-même pour la déplacer.
 - Gomme : cliquez une forme pour supprimer sa ligne. La touche Suppr efface aussi la forme sélectionnée.
 - Barre espace maintenue, puis glisser : déplace la carte pendant qu'un outil est actif. La molette zoome comme d'habitude.
 - Accrochage : le curseur est attiré par les sommets des formes voisines, si bien que deux bâtiments qui se touchent partagent leur sommet. Les formes restent des lignes indépendantes. Maintenez Alt pour ignorer l'accrochage un instant.
 - Annuler : le bouton (ou Ctrl+Z quand le widget a le focus) annule les 20 dernières actions. Après une suppression, seules les colonnes associées au widget sont restituées ; le bouton Annuler de Grist restitue tout.
 - Une nouvelle forme demande son nom, reçoit la couleur `#4A90D9` et est écrite comme une nouvelle ligne. Changez sa couleur dans le tableau.
+- Vous pouvez aussi partir du tableau : saisissez d'abord les noms (et les couleurs) des lignes, sélectionnez une ligne qui n'a pas encore de forme, puis dessinez. La forme est alors écrite dans cette ligne, sans demander de nom. La ligne d'aide indique quelle ligne recevra la forme.
 
 Le mode dessin demande l'accès en écriture : le widget demande le niveau d'accès « Complet ». Il n'utilise que le tableau auquel il est rattaché. Si le tableau est lié à un autre widget (« Sélectionner par »), une nouvelle ligne ne reçoit pas la valeur du lien : renseignez-la dans le tableau.
 
@@ -128,7 +130,7 @@ Le mode dessin demande l'accès en écriture : le widget demande le niveau d'acc
 | Color | Texte | non |
 | Description | Texte | non |
 
-La colonne Shape contient du texte GeoJSON, par exemple `{"type":"Feature","properties":{"kind":"rectangle"},"geometry":{"type":"Polygon","coordinates":[[[3.86,43.60],[3.89,43.60],[3.89,43.62],[3.86,43.62],[3.86,43.60]]]}}`. Les coordonnées sont la longitude puis la latitude, en degrés (WGS 84) : la forme se place sur la carte sans aucun calage. Une géométrie `Polygon` ou `MultiPolygon` seule est aussi acceptée, donc des contours exportés de QGIS peuvent être collés tels quels. La propriété `kind` (`rectangle`, `ellipse` ou `polygon`) est facultative.
+La colonne Shape contient du texte GeoJSON, par exemple `{"type":"Feature","properties":{"kind":"rectangle"},"geometry":{"type":"Polygon","coordinates":[[[3.86,43.60],[3.89,43.60],[3.89,43.62],[3.86,43.62],[3.86,43.60]]]}}`. Les coordonnées sont la longitude puis la latitude, en degrés (WGS 84) : la forme se place sur la carte sans aucun calage. Une géométrie `Polygon` ou `MultiPolygon` seule est aussi acceptée, donc des contours exportés de QGIS peuvent être collés tels quels. Les propriétés `kind` (`rectangle`, `ellipse` ou `polygon`) et `rotation` (degrés, dans le sens des aiguilles d'une montre à l'écran) sont facultatives : les sommets sont toujours dans la géométrie.
 
 Limites, pour que le widget reste rapide et sûr : 2 millions de caractères par cellule, 50 000 sommets par forme, 500 polygones par forme. Une ligne dont la colonne Shape est illisible est exclue, et un bandeau au-dessus de la carte nomme la colonne à vérifier, le nombre de lignes et quelques exemples.
 
