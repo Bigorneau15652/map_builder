@@ -4,19 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!--
-    Content Security Policy: scripts only from this site and from the Grist host, images
+    Content Security Policy: scripts only from this site and from docs.getgrist.com, images
     (map tiles) only over https, no other network access.
-    If your Grist server is not grist.numerique.gouv.fr, change the host below AND in the
-    grist-plugin-api.js script tag (for the public service use https://docs.getgrist.com).
+    grist-plugin-api.js is a public file, the same on every Grist server: the widget talks to
+    the Grist page that shows it, whatever the server. The official widgets load it from
+    docs.getgrist.com, as done here, so this works with any Grist server (public, government or
+    university). To load it from another host, change the host below AND in the script tag.
   -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' https://grist.numerique.gouv.fr; style-src 'self' 'unsafe-inline'; img-src https: data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+        content="default-src 'self'; script-src 'self' https://docs.getgrist.com; style-src 'self' 'unsafe-inline'; img-src https: data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Map Builder</title>
-  <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=0.7.2">
-  <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=0.7.2">
-  <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.Default.css?v=0.7.2">
-  <link rel="stylesheet" href="css/map.css?v=0.7.2">
-  <script src="https://grist.numerique.gouv.fr/grist-plugin-api.js"></script>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=0.7.3">
+  <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css?v=0.7.3">
+  <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.Default.css?v=0.7.3">
+  <link rel="stylesheet" href="css/map.css?v=0.7.3">
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 </head>
 <body>
   <div id="app">
@@ -28,21 +30,21 @@
     </div>
   </div>
 
-  <script src="vendor/leaflet/leaflet.js?v=0.7.2"></script>
-  <script src="vendor/markercluster/leaflet.markercluster.js?v=0.7.2"></script>
-  <script src="vendor/polygon-clipping/polygon-clipping.umd.min.js?v=0.7.2"></script>
-  <script src="data/ign-layers.js?v=0.7.2"></script>
-  <script src="js/i18n.js?v=0.7.2"></script>
-  <script src="js/catalog.js?v=0.7.2"></script>
-  <script src="js/colors.js?v=0.7.2"></script>
-  <script src="js/geometry.js?v=0.7.2"></script>
-  <script src="js/records.js?v=0.7.2"></script>
-  <script src="js/engine.js?v=0.7.2"></script>
-  <script src="js/menu.js?v=0.7.2"></script>
-  <script src="js/config.js?v=0.7.2"></script>
-  <script src="js/editor.js?v=0.7.2"></script>
-  <script src="js/app.js?v=0.7.2"></script>
-  <script src="js/window-link.js?v=0.7.2"></script>
-  <script src="js/main-grist.js?v=0.7.2"></script>
+  <script src="vendor/leaflet/leaflet.js?v=0.7.3"></script>
+  <script src="vendor/markercluster/leaflet.markercluster.js?v=0.7.3"></script>
+  <script src="vendor/polygon-clipping/polygon-clipping.umd.min.js?v=0.7.3"></script>
+  <script src="data/ign-layers.js?v=0.7.3"></script>
+  <script src="js/i18n.js?v=0.7.3"></script>
+  <script src="js/catalog.js?v=0.7.3"></script>
+  <script src="js/colors.js?v=0.7.3"></script>
+  <script src="js/geometry.js?v=0.7.3"></script>
+  <script src="js/records.js?v=0.7.3"></script>
+  <script src="js/engine.js?v=0.7.3"></script>
+  <script src="js/menu.js?v=0.7.3"></script>
+  <script src="js/config.js?v=0.7.3"></script>
+  <script src="js/editor.js?v=0.7.3"></script>
+  <script src="js/app.js?v=0.7.3"></script>
+  <script src="js/window-link.js?v=0.7.3"></script>
+  <script src="js/main-grist.js?v=0.7.3"></script>
 </body>
 </html>
