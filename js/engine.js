@@ -211,7 +211,7 @@
       }
       for (const shape of shapes) {
         const geometry = JSON.stringify(shape.polygons);
-        const signature = `${geometry}|${shape.name}|${shape.description}|${shape.color}`;
+        const signature = `${geometry}|${shape.rotation}|${shape.name}|${shape.description}|${shape.color}`;
         const entry = this.shapes.get(shape.id);
         if (!entry) {
           const layer = this._makeShape(shape);
@@ -262,6 +262,8 @@
       layer.on(`mousedown`, (event) => {
         if (this.editHandler) this.editHandler.shapeDown(shape.id, event);
       });
+      layer.on(`mouseover`, () => { if (this.editHandler) this.editHandler.shapeOver(true); });
+      layer.on(`mouseout`, () => { if (this.editHandler) this.editHandler.shapeOver(false); });
       return layer;
     }
 
@@ -281,11 +283,11 @@
     }
 
     // Shows a shape at another place or form while it is being edited, before the table has it.
-    previewShape(id, polygons) {
+    previewShape(id, polygons, rotation) {
       const entry = this.shapes.get(id);
       if (!entry) return;
       entry.layer.setLatLngs(polygons);
-      entry.shape = { ...entry.shape, polygons };
+      entry.shape = { ...entry.shape, polygons, rotation: rotation === undefined ? entry.shape.rotation : rotation };
     }
 
     // Transparency of the fill of all the shapes (0 to 1 of opacity); the border stays solid.

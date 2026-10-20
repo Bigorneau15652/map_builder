@@ -170,18 +170,18 @@
     if (!usable) {
       shared.message = t(`needColumns`);
       app.setDataMessage(shared.message);
-      app.setData({ points: [], shapes: [], invalid: [], columns: shared.columns });
+      app.setData({ points: [], shapes: [], invalid: [], empty: [], columns: shared.columns });
       link.send(`mapbuilder:state`, { ...shared, points: [], shapes: [], invalid: [] });
       return;
     }
-    const { points, shapes, invalid } = normalize(mapped);
+    const { points, shapes, invalid, empty } = normalize(mapped);
     shared.points = points;
     shared.shapes = shapes;
     shared.invalid = invalid;
     shared.columns = { shape: mapping.Shape, lat: mapping.Latitude, lng: mapping.Longitude };
     shared.message = points.length || shapes.length || invalid.length ? `` : t(`noData`);
     app.setDataMessage(shared.message);
-    app.setData({ points, shapes, invalid, columns: shared.columns });
+    app.setData({ points, shapes, invalid, empty, columns: shared.columns });
     link.send(`mapbuilder:state`, { ...shared });
   });
 

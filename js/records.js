@@ -5,6 +5,7 @@
   const MAX_NAME_LENGTH = 300;
   const MAX_DESCRIPTION_LENGTH = 5000;
   const MAX_EXAMPLES = 3;
+  const MAX_EMPTY_ROWS = 20000;
 
   // Grist sometimes wraps a value as V(...) for reference columns; this reads it safely.
   function parseValue(value) {
@@ -38,12 +39,14 @@
   // rows: records with the mapped column names Name, Shape, Color, Description, Latitude and
   // Longitude (the last four may be missing). A row is a shape when its Shape column holds a
   // valid shape, and a pin when it has valid coordinates; it can be both.
-  // Returns { shapes, points, invalid } where invalid lists { id, label, column } of the
-  // ignored rows, column being `shape` or `coordinates`.
+  // Returns { shapes, points, invalid, empty } where invalid lists { id, label, column } of the
+  // ignored rows, column being `shape` or `coordinates`, and empty lists { id, name } of the
+  // rows that have no shape and no coordinates yet (the drawing mode can fill them).
   function normalize(rows) {
     const shapes = [];
     const points = [];
     const invalid = [];
+    const empty = [];
     for (const row of rows) {
       const name = toText(row.Name, MAX_NAME_LENGTH);
       const description = toText(row.Description, MAX_DESCRIPTION_LENGTH);
@@ -55,21 +58,26 @@
         if (parsed.error) {
           invalid.push({ id: row.id, label, column: `shape` });
         } else {
-          shapes.push({ id: row.id, name, description, color, kind: parsed.kind, polygons: parsed.polygons, size: sizeOf(parsed.polygons) });
+          shapes.push({
+            id: row.id, name, description, color, kind: parsed.kind, rotation: parsed.rotation,
+            polygons: parsed.polygons, size: sizeOf(parsed.polygons)
+          });
         }
       }
 
       const rawLat = parseValue(row.Latitude);
       const rawLng = parseValue(row.Longitude);
+      const noCoordinates = isEmpty(rawLat) && isEmpty(rawLng);
+      if (noCoordinates && !(typeof rawShape === `string` && rawShape.trim()) && empty.length < MAX_EMPTY_ROWS) empty.push({ id: row.id, name });
       // Empty coordinates (or 0 / 0) mean a blank row: nothing to report.
-      if (!(isEmpty(rawLat) && isEmpty(rawLng))) {
+      if (!noCoordinates) {
         const lat = toCoordinate(row.Latitude, 90);
         const lng = toCoordinate(row.Longitude, 180);
         if (lat === null || lng === null) invalid.push({ id: row.id, label, column: `coordinates` });
         else points.push({ id: row.id, name, lat, lng, description, color });
       }
     }
-    return { shapes, points, invalid };
+    return { shapes, points, invalid, empty };
   }
 
   // Text of the data-quality banner: which columns to check, how many rows, a few examples.

@@ -78,7 +78,7 @@ If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index
 - `js/app.js`: the map screen. `js/engine.js`: the map, the shapes and the pins. `js/editor.js`: the drawing mode. `js/geometry.js`: reading of the Shape column. `js/records.js`: reading and checking of the rows. `js/menu.js`: catalogue, "Other" dialog, transparency slider. `js/catalog.js`: maps. `js/config.js`: saved settings. `js/colors.js`, `js/i18n.js`, `js/window-link.js`.
 - `data/ign-layers.js`: the IGN layers. `vendor`: Leaflet and Leaflet.markercluster.
 
-Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.2.0`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
+Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.3.0`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
 
 Licence: MIT. Leaflet is under the BSD 2-Clause licence and Leaflet.markercluster under the MIT licence.
 
@@ -151,6 +151,6 @@ Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur G
 
 ### Publier une modification
 
-Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.2.0` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
+Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.3.0` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
 
 Licence : MIT. Leaflet est sous licence BSD 2-Clause et Leaflet.markercluster sous licence MIT.

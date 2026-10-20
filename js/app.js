@@ -249,6 +249,7 @@
       this.showBanner();
       if (!this.docked) this.engine.setContent(data.points, data.shapes);
       this.latest = data;
+      if (this.editor) this.editor.setEmptyRows(data.empty || []);
       // A selection that arrived before its pin existed is applied now.
       if (this.wanted.pending) this.select(this.wanted.id, true);
     }
