@@ -6,7 +6,7 @@ English first, version française plus bas.
 
 A light geographic information system for [Grist](https://www.getgrist.com): shapes (rectangles, ovals, free outlines) and pins stored in a Grist table and drawn over a base map. One row of the table is one object. Colours, filters, links with other widgets and sharing are handled by Grist itself, so a Grist document can hold departments, regions or the buildings of a campus and be reused by everybody. It is built from the [map_view](https://github.com/Bigorneau15652/map_view) widget.
 
-Status: work in progress. Reading, display and the drawing mode are done. The import of department and region outlines is the next step.
+Status: usable. Reading, display, the drawing mode and a ready-made file of the French departments and regions (see [DATA.md](DATA.md)) are done.
 
 ### Features
 
@@ -21,6 +21,7 @@ Status: work in progress. Reading, display and the drawing mode are done. The im
 - A transparency slider for the fill of the shapes, at the bottom left.
 - The buttons and sliders fade after three seconds without movement over the map. The view (centre and zoom) is kept in the browser of each user.
 - The map can be opened in a separate window, for example on a second screen.
+- A ready-made Excel file with the outlines of the French departments and regions, to import in Grist ([DATA.md](DATA.md)).
 - Interface in French and English, chosen from the browser language.
 
 ### Drawing mode
@@ -30,10 +31,10 @@ The pencil button opens a toolbar on the left of the map. The tools are: select 
 - Rectangle and oval: drag on the map. Hold Shift for a square or a circle.
 - Free shape: click each point, then click the first point, double-click or press Enter to close the shape. Backspace removes the last point. Esc or a right click cancels the drawing in progress (the keys work once the widget has the focus: click on the map first).
 - Reshape: select a shape (click it, or select its row). Drag a round handle to move a point, drag the small handle in the middle of a side to add a point, double-click a point to remove it. A rectangle or an oval keeps its eight handles and its kind: the cursor shows the direction of each handle (arrows up and down, left and right, or diagonal at the corners), and a corner dragged with Shift keeps the proportions. A round green handle above a rectangle or an oval turns it (Shift: steps of 15 degrees); the turn is saved in the shape. Drag the shape itself to move it.
-- Eraser: click a shape to delete its row. Delete also erases the selected shape.
+- Eraser: click a shape to erase it: the Shape cell is emptied and the row stays in the table with its name, its colour and its other columns, ready to be drawn again. The Delete key also erases the selected shape.
 - Space bar held down, then drag: move the map while a tool is active. The mouse wheel zooms as usual.
 - Snapping: the cursor is attracted by the corners of neighbouring shapes, so two buildings that touch share their corner. The shapes stay independent rows. Hold Alt to ignore snapping for a moment.
-- Undo: the button (or Ctrl+Z while the widget has the focus) undoes the last 20 actions. After an erase, only the columns mapped to the widget are restored; the Undo button of Grist restores everything.
+- Undo: the button (or Ctrl+Z while the widget has the focus) undoes the last 20 actions. The Undo button of Grist works too.
 - A new shape asks for its name, gets the colour `#4A90D9` and is written as a new row. Change its colour in the table.
 - You can also start from the table: type the names (and colours) of the rows first, select a row that has no shape yet, and draw. The shape is then written to that row, without asking for a name. The help line tells which row will receive the shape.
 
@@ -71,7 +72,7 @@ If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index
 
 ### Tests
 
-`tests/run.js` and `tests/edit.js` run the widget in a headless browser with a mocked Grist (`tests/mock-grist.js`): reading and drawing of shapes, selection and zoom, banners, narrow panel in dark mode, 3 000 shapes, and the whole drawing mode (rectangle, oval, free shape, reshaping, moving, eraser, undo, snapping, refused writes). See the first lines of `tests/run.js` for the command.
+`tests/run.js`, `tests/edit.js` and `tests/admin-data.js` run the widget in a headless browser with a mocked Grist (`tests/mock-grist.js`): reading and drawing of shapes, selection and zoom, banners, narrow panel in dark mode, 3 000 shapes, and the whole drawing mode (rectangle, oval, free shape, reshaping, moving, eraser, undo, snapping, refused writes). See the first lines of `tests/run.js` for the command.
 
 ### Files
 
@@ -79,7 +80,7 @@ If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index
 - `js/app.js`: the map screen. `js/engine.js`: the map, the shapes and the pins. `js/editor.js`: the drawing mode. `js/geometry.js`: reading of the Shape column. `js/records.js`: reading and checking of the rows. `js/menu.js`: catalogue, "Other" dialog, transparency slider. `js/catalog.js`: maps. `js/config.js`: saved settings. `js/colors.js`, `js/i18n.js`, `js/window-link.js`.
 - `data/ign-layers.js`: the IGN layers. `vendor`: Leaflet and Leaflet.markercluster.
 
-Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.3.0`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
+Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.3.1`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
 
 Licence: MIT. Leaflet is under the BSD 2-Clause licence and Leaflet.markercluster under the MIT licence.
 
@@ -87,7 +88,7 @@ Licence: MIT. Leaflet is under the BSD 2-Clause licence and Leaflet.markercluste
 
 Un système d'information géographique léger pour [Grist](https://www.getgrist.com) : des formes (rectangles, ovales, contours libres) et des épingles stockées dans un tableau Grist et dessinées sur un fond de carte. Une ligne du tableau est un objet. Les couleurs, les filtres, les liens avec d'autres widgets et le partage sont gérés par Grist lui-même, si bien qu'un document Grist peut contenir des départements, des régions ou les bâtiments d'un campus et être réutilisé par tous. Il est construit à partir du widget [map_view](https://github.com/Bigorneau15652/map_view).
 
-État : en cours de réalisation. La lecture, l'affichage et le mode dessin sont faits. L'import des contours des départements et des régions est la prochaine étape.
+État : utilisable. La lecture, l'affichage, le mode dessin et un fichier prêt à l'emploi des départements et des régions français (voir [DATA.md](DATA.md)) sont faits.
 
 ### Fonctions
 
@@ -102,6 +103,7 @@ Un système d'information géographique léger pour [Grist](https://www.getgrist
 - Une réglette de transparence du remplissage des formes, en bas à gauche.
 - Les boutons et les réglettes s'effacent après trois secondes sans mouvement sur la carte. La vue (position et zoom) est conservée dans le navigateur de chaque utilisateur.
 - La carte peut s'ouvrir dans une fenêtre séparée, par exemple sur un second écran.
+- Un fichier Excel prêt à l'emploi avec les contours des départements et des régions français, à importer dans Grist ([DATA.md](DATA.md)).
 - Interface en français et en anglais, selon la langue du navigateur.
 
 ### Mode dessin
@@ -111,10 +113,10 @@ Le bouton crayon ouvre une barre d'outils à gauche de la carte. Les outils sont
 - Rectangle et ovale : glissez sur la carte. Maintenez Maj pour un carré ou un cercle.
 - Forme libre : cliquez chaque point, puis cliquez sur le premier point, double-cliquez ou appuyez sur Entrée pour fermer la forme. Retour arrière retire le dernier point. Échap ou un clic droit annule le tracé en cours (les touches fonctionnent quand le widget a le focus : cliquez d'abord sur la carte).
 - Retouche : sélectionnez une forme (cliquez-la, ou sélectionnez sa ligne). Tirez une poignée ronde pour déplacer un point, tirez la petite poignée au milieu d'un côté pour ajouter un point, double-cliquez un point pour le retirer. Un rectangle ou un ovale garde ses huit poignées et son type : le curseur indique la direction de chaque poignée (flèches haut et bas, gauche et droite, ou en diagonale aux coins), et un coin tiré avec Maj garde les proportions. Une poignée ronde verte au-dessus d'un rectangle ou d'un ovale le fait tourner (Maj : par pas de 15 degrés) ; la rotation est enregistrée dans la forme. Tirez la forme elle-même pour la déplacer.
-- Gomme : cliquez une forme pour supprimer sa ligne. La touche Suppr efface aussi la forme sélectionnée.
+- Gomme : cliquez une forme pour l'effacer : la cellule Shape est vidée et la ligne reste dans le tableau avec son nom, sa couleur et ses autres colonnes, prête à être redessinée. La touche Suppr efface aussi la forme sélectionnée.
 - Barre espace maintenue, puis glisser : déplace la carte pendant qu'un outil est actif. La molette zoome comme d'habitude.
 - Accrochage : le curseur est attiré par les sommets des formes voisines, si bien que deux bâtiments qui se touchent partagent leur sommet. Les formes restent des lignes indépendantes. Maintenez Alt pour ignorer l'accrochage un instant.
-- Annuler : le bouton (ou Ctrl+Z quand le widget a le focus) annule les 20 dernières actions. Après une suppression, seules les colonnes associées au widget sont restituées ; le bouton Annuler de Grist restitue tout.
+- Annuler : le bouton (ou Ctrl+Z quand le widget a le focus) annule les 20 dernières actions. Le bouton Annuler de Grist fonctionne aussi.
 - Une nouvelle forme demande son nom, reçoit la couleur `#4A90D9` et est écrite comme une nouvelle ligne. Changez sa couleur dans le tableau.
 - Vous pouvez aussi partir du tableau : saisissez d'abord les noms (et les couleurs) des lignes, sélectionnez une ligne qui n'a pas encore de forme, puis dessinez. La forme est alors écrite dans cette ligne, sans demander de nom. La ligne d'aide indique quelle ligne recevra la forme.
 
@@ -149,10 +151,10 @@ Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur G
 
 ### Tests
 
-`tests/run.js` et `tests/edit.js` lancent le widget dans un navigateur sans fenêtre avec un Grist simulé (`tests/mock-grist.js`) : lecture et dessin des formes, sélection et zoom, bandeaux, panneau étroit en mode sombre, 3 000 formes, et tout le mode dessin (rectangle, ovale, forme libre, retouche, déplacement, gomme, annulation, accrochage, écritures refusées). La commande est indiquée en tête de `tests/run.js`.
+`tests/run.js`, `tests/edit.js` et `tests/admin-data.js` lancent le widget dans un navigateur sans fenêtre avec un Grist simulé (`tests/mock-grist.js`) : lecture et dessin des formes, sélection et zoom, bandeaux, panneau étroit en mode sombre, 3 000 formes, et tout le mode dessin (rectangle, ovale, forme libre, retouche, déplacement, gomme, annulation, accrochage, écritures refusées). La commande est indiquée en tête de `tests/run.js`.
 
 ### Publier une modification
 
-Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.3.0` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
+Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.3.1` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
 
 Licence : MIT. Leaflet est sous licence BSD 2-Clause et Leaflet.markercluster sous licence MIT.

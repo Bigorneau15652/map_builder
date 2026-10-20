@@ -77,11 +77,11 @@
       hint_rectangle: `Rectangle : glissez sur la carte (Maj : carré). Espace + glisser : déplacer la carte.`,
       hint_ellipse: `Ovale : glissez sur la carte (Maj : cercle). Espace + glisser : déplacer la carte.`,
       hint_polygon: `Forme libre : cliquez pour poser chaque point, puis cliquez sur le premier point, double-cliquez ou appuyez sur Entrée pour fermer la forme. Retour arrière : retirer le dernier point. Échap ou clic droit : annuler le tracé.`,
-      hint_erase: `Gomme : cliquez une forme pour la supprimer. Annuler la dernière action la rétablit.`,
+      hint_erase: `Gomme : cliquez une forme pour l'effacer. La ligne reste dans le tableau, sans forme. Annuler la dernière action la rétablit.`,
       shapeNameTitle: `Nouvelle forme`,
       shapeNameField: `Nom de la forme`,
       defaultShapeName: `Forme {number}`,
-      shapeErased: `Forme « {name} » supprimée. Le bouton Annuler la rétablit (seules les colonnes associées au widget sont restituées).`,
+      shapeErased: `Forme « {name} » effacée : la ligne reste dans le tableau. Le bouton Annuler la rétablit.`,
       writeFailed: `Le tableau n'a pas pu être modifié : {error}`,
       tooManyPoints: `Cette forme a {count} points : trop pour les retoucher un par un. Vous pouvez la déplacer ou la supprimer.`
     },
@@ -156,11 +156,11 @@
       hint_rectangle: `Rectangle: drag on the map (Shift: square). Space + drag: move the map.`,
       hint_ellipse: `Oval: drag on the map (Shift: circle). Space + drag: move the map.`,
       hint_polygon: `Free shape: click to place each point, then click the first point, double-click or press Enter to close the shape. Backspace: remove the last point. Esc or right click: cancel the drawing.`,
-      hint_erase: `Eraser: click a shape to delete it. Undoing the last action brings it back.`,
+      hint_erase: `Eraser: click a shape to erase it. The row stays in the table, without a shape. Undoing the last action brings it back.`,
       shapeNameTitle: `New shape`,
       shapeNameField: `Name of the shape`,
       defaultShapeName: `Shape {number}`,
-      shapeErased: `Shape "{name}" deleted. The Undo button brings it back (only the columns mapped to the widget are restored).`,
+      shapeErased: `Shape "{name}" erased: the row stays in the table. The Undo button brings it back.`,
       writeFailed: `The table could not be changed: {error}`,
       tooManyPoints: `This shape has {count} points: too many to reshape one by one. You can still move or delete it.`
     }
