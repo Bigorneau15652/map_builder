@@ -63,12 +63,12 @@ Limits, to keep the widget fast and safe: 2 million characters per cell, 50 000 
 3. In Grist, add a page with a custom widget, paste that address and give it full access ("Full"): it is needed to write the shapes you draw.
 4. In the right-hand panel, under the access level, map the columns.
 
-If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index.html`: the `src` of the `grist-plugin-api.js` script and the host named in the Content-Security-Policy line above it (for the public service use `https://docs.getgrist.com`).
+The widget works with any Grist server (public service, government or university installation): the `grist-plugin-api.js` script it loads from `docs.getgrist.com` is a public file that only lets the widget talk to the Grist page showing it, so the server hosting your documents does not matter. If you prefer another source for that script (for example a copy on your own server), edit two places in `index.html`: the `src` of the script and the host named in the Content-Security-Policy line above it.
 
 ### Security and privacy
 
-- No external script except the Grist plugin API, loaded from your own Grist server. Leaflet, its clustering plugin and polygon-clipping (MIT) are in `vendor`. A Content-Security-Policy limits scripts to this site and images to https.
-- The widget only reads and writes the table it is attached to, and only the mapped columns. The data of the table is never sent anywhere. Each map provider sees the IP address of the users, the displayed area and the site that shows the map. Shapes are never downloaded from anywhere: they come from the table.
+- No external script except the Grist plugin API, loaded from `docs.getgrist.com`. Leaflet, its clustering plugin and polygon-clipping (MIT) are in `vendor`. A Content-Security-Policy limits scripts to this site and to `docs.getgrist.com`, and images to https (the tiles of the base maps, including the maps you add yourself: the address of such a map decides which server sees the IP address of the users, so add only providers you trust). The API key of a custom map is stored in clear text in the widget options.
+- The widget asks for the access level "Full" because writing shapes needs it, but it only reads and writes the table it is attached to, and only the mapped columns. It never touches the other tables of the document. The data of the table is never sent anywhere. Each map provider sees the IP address of the users, the displayed area and the site that shows the map. Shapes are never downloaded from anywhere: they come from the table.
 - Labels and names are written as text, never as HTML. The text of the Shape column is checked (types, ranges, sizes) before drawing.
 - Messages between the widget and the separate windows are accepted only from the same site and from the window the widget opened, and the settings they carry are checked before use.
 
@@ -82,7 +82,7 @@ If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index
 - `js/app.js`: the map screen. `js/engine.js`: the map, the shapes and the pins. `js/editor.js`: the drawing mode. `vendor`: Leaflet, Leaflet.markercluster and polygon-clipping (to add and subtract shapes). `js/geometry.js`: reading of the Shape column. `js/records.js`: reading and checking of the rows. `js/menu.js`: catalogue, "Other" dialog, transparency slider. `js/catalog.js`: maps. `js/config.js`: saved settings. `js/colors.js`, `js/i18n.js`, `js/window-link.js`.
 - `data/ign-layers.js`: the IGN layers. `vendor`: Leaflet and Leaflet.markercluster.
 
-Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.7.2`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
+Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.7.3`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
 
 Licence: MIT. Leaflet is under the BSD 2-Clause licence, Leaflet.markercluster and polygon-clipping under the MIT licence.
 
@@ -147,11 +147,11 @@ Limites, pour que le widget reste rapide et sûr : 2 millions de caractères par
 3. Dans Grist : Ajouter, puis Ajouter une page, puis choisissez Personnalisée. Collez l'adresse du widget et donnez-lui l'accès complet (« Complet ») : il est nécessaire pour écrire les formes que vous dessinez.
 4. Dans le panneau de droite, sous le niveau d'accès, associez les colonnes.
 
-Si votre serveur Grist n'est pas `grist.numerique.gouv.fr`, modifiez deux endroits dans `index.html` : l'adresse du script `grist-plugin-api.js` et l'hôte indiqué dans la ligne Content-Security-Policy située au-dessus.
+Le widget fonctionne avec n'importe quel serveur Grist (service public, serveur de l'État ou installation d'une université) : le script `grist-plugin-api.js` qu'il charge depuis `docs.getgrist.com` est un fichier public qui sert seulement à faire dialoguer le widget avec la page Grist qui l'affiche, le serveur qui héberge vos documents n'a donc pas d'importance. Si vous préférez une autre source pour ce script (par exemple une copie sur votre propre serveur), modifiez deux endroits dans `index.html` : l'adresse du script et l'hôte indiqué dans la ligne Content-Security-Policy située au-dessus.
 
 ### Sécurité et confidentialité
 
-Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur Grist. Leaflet, son plugin de regroupement et polygon-clipping (MIT) sont dans `vendor`. Une politique de sécurité de contenu limite les scripts à ce site et les images à https. Le widget ne lit et n'écrit que le tableau auquel il est rattaché, et seulement les colonnes associées. Les données du tableau ne sont jamais envoyées. Chaque fournisseur de carte voit l'adresse IP des utilisateurs, la zone affichée et le site qui affiche la carte. Les formes ne sont jamais téléchargées : elles viennent du tableau. Les étiquettes et les noms sont écrits comme du texte, jamais comme du HTML. Le texte de la colonne Shape est vérifié (types, plages, tailles) avant le dessin. Les messages entre le widget et les fenêtres séparées ne sont acceptés que du même site et de la fenêtre ouverte par le widget, et les réglages qu'ils portent sont vérifiés avant usage.
+Aucun script externe sauf l'API de plugin Grist, chargée depuis `docs.getgrist.com`. Leaflet, son plugin de regroupement et polygon-clipping (MIT) sont dans `vendor`. Une politique de sécurité de contenu limite les scripts à ce site et à `docs.getgrist.com`, et les images à https (les tuiles des fonds de carte, y compris les cartes que vous ajoutez vous-même : l'adresse d'une telle carte décide quel serveur voit l'adresse IP des utilisateurs, n'ajoutez donc que des fournisseurs de confiance). La clé API d'une carte personnalisée est enregistrée en clair dans les options du widget. Le widget demande l'accès « Complet » car l'écriture des formes l'exige, mais il ne lit et n'écrit que le tableau auquel il est rattaché, et seulement les colonnes associées. Il ne touche jamais aux autres tables du document. Les données du tableau ne sont jamais envoyées. Chaque fournisseur de carte voit l'adresse IP des utilisateurs, la zone affichée et le site qui affiche la carte. Les formes ne sont jamais téléchargées : elles viennent du tableau. Les étiquettes et les noms sont écrits comme du texte, jamais comme du HTML. Le texte de la colonne Shape est vérifié (types, plages, tailles) avant le dessin. Les messages entre le widget et les fenêtres séparées ne sont acceptés que du même site et de la fenêtre ouverte par le widget, et les réglages qu'ils portent sont vérifiés avant usage.
 
 ### Tests
 
@@ -159,6 +159,6 @@ Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur G
 
 ### Publier une modification
 
-Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.7.2` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
+Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.7.3` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
 
 Licence : MIT. Leaflet est sous licence BSD 2-Clause, Leaflet.markercluster et polygon-clipping sous licence MIT.
