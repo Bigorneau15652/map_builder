@@ -212,12 +212,18 @@ body.catalog-window { background: #ffffff; }
 #stage > .dialog-back { z-index: 1300; border-radius: 0; display: flex; align-items: center; justify-content: center; }
 #stage > .dialog-back .dialog { width: min(360px, 100%); }
 
-/* Cursors while reshaping: the shape can be dragged, the handles say what they do. */
-#map.edit-move, #map.edit-move .leaflet-interactive { cursor: move !important; }
-.handle.vertex { cursor: move; }
-.handle.middle { cursor: copy; }
-.handle.rotate { border-radius: 50%; border-color: #1b5e20; background: #c8e6c9; cursor: grab; }
-.handle.rotate:active { cursor: grabbing; }
+/* Cursors while reshaping: a shape can be dragged, each handle says what it does (these cursors
+   are classes with !important: nothing else can change them). */
+#map.edit-move canvas.leaflet-interactive { cursor: move !important; }
+.handle.cur-ew-resize { cursor: ew-resize !important; }
+.handle.cur-ns-resize { cursor: ns-resize !important; }
+.handle.cur-nesw-resize { cursor: nesw-resize !important; }
+.handle.cur-nwse-resize { cursor: nwse-resize !important; }
+.handle.cur-move { cursor: move !important; }
+.handle.cur-copy { cursor: copy !important; }
+.handle.cur-grab { cursor: grab !important; }
+.handle.cur-grab:active { cursor: grabbing !important; }
+.handle.rotate { border-radius: 50%; border-color: #1b5e20; background: #c8e6c9; }
 
 /* While the drawing mode is on, a coloured frame goes around the map. */
 #stage.editing::after {

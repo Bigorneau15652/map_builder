@@ -174,9 +174,19 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await normalMode();
   await page.evaluate((id) => window.__grist.selectRow(id), square.id);
   await page.waitForTimeout(500);
-  const cursors = () => page.evaluate(() => [...document.querySelectorAll(`.handle.corner, .handle.side`)].map((el) => el.style.cursor));
+  const cursors = () => page.evaluate(() => [...document.querySelectorAll(`.handle.corner, .handle.side`)].map((el) => getComputedStyle(el).cursor));
   check(`handles have resize cursors`, JSON.stringify(await cursors()) === JSON.stringify([`nesw-resize`, `nwse-resize`, `nesw-resize`, `nwse-resize`, `ew-resize`, `ew-resize`, `ns-resize`, `ns-resize`]), JSON.stringify(await cursors()));
-  check(`the rotation handle has its own cursor`, (await page.locator(`.handle.rotate`).evaluate((el) => el.style.cursor)) === `grab`);
+  // The effective cursor over a handle of a shape of the table, the mouse coming from the shape.
+  const ringOfSquare = ring((await rows(page)).find((row) => row.id === square.id));
+  const bodyPoint = await at((ringOfSquare[0][1] + ringOfSquare[2][1]) / 2, (ringOfSquare[0][0] + ringOfSquare[2][0]) / 2);
+  await page.mouse.move(bodyPoint.x, bodyPoint.y);
+  await page.waitForTimeout(150);
+  check(`the move cursor shows over a shape of the table`, await page.evaluate(() => window.__map.getContainer().classList.contains(`edit-move`)));
+  const cornerHandle = await page.locator(`.handle.corner`).nth(2).boundingBox();
+  await page.mouse.move(cornerHandle.x + 7, cornerHandle.y + 7);
+  check(`a handle keeps its resize cursor over the shape`, (await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [cornerHandle.x + 7, cornerHandle.y + 7])) === `nesw-resize`);
+  check(`every handle says what it does in a tooltip`, await page.evaluate(() => [...document.querySelectorAll(`.handle`)].every((el) => el.title.length > 5)));
+  check(`the rotation handle has its own cursor`, (await page.locator(`.handle.rotate`).evaluate((el) => getComputedStyle(el).cursor)) === `grab`);
 
   // Turning a rectangle with the top handle (Shift: steps of 15 degrees).
   const squareRing = ring((await rows(page)).find((row) => row.Name === `Carre`));
@@ -289,6 +299,10 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await page.waitForTimeout(400);
   check(`three operation buttons appear next to the fusion button`, (await choices.count()) === 3);
   check(`no name is asked for and no row is created`, !(await page.locator(`#f-shape-name`).isVisible()) && (await rows(page)).length === rowsBeforeFusion);
+  const outside = await at(43.5905, 3.9000);
+  await page.mouse.click(outside.x, outside.y);
+  await page.waitForTimeout(300);
+  check(`a click on the map does not confirm before an operation is chosen`, (await choices.count()) === 3 && (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1);
   check(`the second shape has its handles`, (await page.locator(`.handle.corner, .handle.side`).count()) === 8);
   check(`1 + 2 is shown first`, (await choices.nth(0).getAttribute(`aria-pressed`)) === `true`);
   await choices.nth(1).click();
@@ -298,17 +312,36 @@ const sizeOf = (page, points) => page.evaluate((list) => {
 
   // The second shape is moved by dragging it, then resized with a corner handle.
   const centreOfSecond = { x: holeFrom.x + 20, y: holeFrom.y + 15 };
+  const mapCentre = () => page.evaluate(() => { const c = window.__map.getCenter(); return [c.lat, c.lng]; });
+  const centreBeforeMove = await mapCentre();
   await drag(centreOfSecond, { x: centreOfSecond.x + 25, y: centreOfSecond.y });
   await page.waitForTimeout(300);
+  check(`dragging the second shape moves the shape, not the map`, JSON.stringify(centreBeforeMove) === JSON.stringify(await mapCentre()), JSON.stringify({ centreBeforeMove, after: await mapCentre() }));
+  // The cursors of the handles are the effective ones, also when the mouse comes from the shape.
+  await page.mouse.move(centreOfSecond.x + 25, centreOfSecond.y);
+  await page.waitForTimeout(150);
+  check(`the move cursor shows over the shape`, await page.evaluate(() => window.__map.getContainer().classList.contains(`edit-move`)));
+  const handleCursors = [];
+  for (const index of [0, 2, 4, 6]) {
+    const box = await page.locator(`.handle.corner, .handle.side`).nth(index).boundingBox();
+    await page.mouse.move(box.x + 7, box.y + 7);
+    handleCursors.push(await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [box.x + 7, box.y + 7]));
+  }
+  check(`the handles show resize cursors`, JSON.stringify(handleCursors) === JSON.stringify([`nesw-resize`, `nesw-resize`, `ew-resize`, `ns-resize`]), JSON.stringify(handleCursors));
+  const rotateBox = await page.locator(`.handle.rotate`).boundingBox();
+  await page.mouse.move(rotateBox.x + 7, rotateBox.y + 7);
+  check(`the rotation handle shows a grab cursor`, (await page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)).cursor, [rotateBox.x + 7, rotateBox.y + 7])) === `grab`);
   const cornerBox = await page.locator(`.handle.corner`).nth(2).boundingBox();
   await drag({ x: cornerBox.x + 7, y: cornerBox.y + 7 }, { x: cornerBox.x + 22, y: cornerBox.y - 8 });
   await page.waitForTimeout(300);
   check(`nothing is written while the second shape is adjusted`, (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1 && (await rows(page)).length === rowsBeforeFusion);
   await page.screenshot({ path: path.join(OUT, `builder-7-fusion.png`) });
-  await page.keyboard.press(`Enter`);
+  // A click on the map, outside the second shape, confirms the chosen operation.
+  const outsidePlace = await at(43.5905, 3.9000);
+  await page.mouse.click(outsidePlace.x, outsidePlace.y);
   await page.waitForTimeout(500);
   const withHole = (await rows(page)).find((row) => row.id === 1);
-  check(`Enter writes 1 - 2: a hole in the shape`, withHole.Shape.geometry.type === `Polygon` && withHole.Shape.geometry.coordinates.length === 2, String(withHole.Shape.geometry.coordinates.length));
+  check(`a click outside writes 1 - 2: a hole in the shape`, withHole.Shape.geometry.type === `Polygon` && withHole.Shape.geometry.coordinates.length === 2, String(withHole.Shape.geometry.coordinates.length));
   const holeLngs = withHole.Shape.geometry.coordinates[1].map((point) => point[0]);
   const movedLng = await page.evaluate((x) => window.__map.containerPointToLatLng([x, 100]).lng, holeFrom.x + 25 - (await page.evaluate(() => window.__map.getContainer().getBoundingClientRect().left)));
   check(`the hole is where the second shape was moved`, Math.abs(Math.min(...holeLngs) - movedLng) < 0.0015, `${Math.min(...holeLngs)} / ${movedLng}`);

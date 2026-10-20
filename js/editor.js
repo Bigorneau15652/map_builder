@@ -139,7 +139,11 @@
       this.onKeyUp = (event) => this.keyUp(event);
       // A click on the empty map only drops the handles: the row of the table stays selected,
       // so that the next shape drawn can still go to it.
-      this.onMapClick = () => { if (this.tool === `select` && !this.pending) this.selectShape(null, false); };
+      this.onMapClick = () => {
+        if (this.pending) {
+          if (this.pending.chosen) this.confirmFusion();
+        } else if (this.tool === `select`) this.selectShape(null, false);
+      };
       this.onContextMenu = (event) => this.contextMenu(event);
       this.onZoomEnd = () => this.refresh();
     }
@@ -241,7 +245,11 @@
       const entry = this.engine.shapes.get(id);
       if (!entry) return;
       this.clearHandles();
-      const layer = L.polygon(polygons, { color: `#111111`, weight: 2, dashArray: `6 4`, fillColor: `#ffffff`, fillOpacity: 0.2, bubblingMouseEvents: false }).addTo(this.map);
+      const layer = L.polygon(polygons, {
+        color: `#111111`, weight: 2, dashArray: `6 4`, fillColor: `#ffffff`, fillOpacity: 0.2,
+        renderer: this.engine.renderer, bubblingMouseEvents: false
+      }).addTo(this.map);
+      layer.bringToFront();
       layer.on(`click`, L.DomEvent.stopPropagation);
       layer.on(`mousedown`, (event) => this.shapeDown(SECOND_ID, event));
       layer.on(`mouseover`, () => this.shapeOver(true));
@@ -249,12 +257,13 @@
       this.secondLayer = layer;
       this.pending = {
         id, kind: entry.shape.kind, rotation: entry.shape.rotation || 0, original: copyPolygons(entry.shape.polygons),
-        second: { kind, rotation, polygons }, operation: `add`, result: []
+        second: { kind, rotation, polygons }, operation: `add`, chosen: false, result: []
       };
       this.fusion = false;
       this.selectedId = SECOND_ID;
       this.updateResult();
       this.showHandles(SECOND_ID);
+      this.applyCursor();
       this.hooks.onTool(this.tool);
       this.refreshHint();
     }
@@ -262,6 +271,8 @@
     setFusionOperation(operation) {
       if (!this.pending) return;
       this.pending.operation = operation;
+      // Once an operation is chosen, a click on the map outside the second shape confirms it.
+      this.pending.chosen = true;
       this.updateResult();
       this.hooks.onTool(this.tool);
     }
@@ -330,6 +341,7 @@
       this.pending = null;
       this.selectedId = pending.id;
       this.container.classList.remove(`edit-move`);
+      this.applyCursor();
       this.hooks.onTool(this.tool);
       this.refreshHint();
     }
@@ -363,7 +375,9 @@
     // The map can be dragged with the select tool, or with the space bar held down.
     applyCursor() {
       const drawing = this.tool !== `select` && !this.spaceDown;
-      if (drawing) this.map.dragging.disable();
+      // While a fusion waits, the map is moved only with the space bar, so that the second shape
+      // can be dragged like any shape.
+      if (drawing || (this.pending && !this.spaceDown)) this.map.dragging.disable();
       else this.map.dragging.enable();
       this.container.classList.toggle(`edit-draw`, drawing && this.tool !== `erase`);
       this.container.classList.toggle(`edit-erase`, drawing && this.tool === `erase`);
@@ -408,6 +422,7 @@
       if (this.pending) {
         this.clearHandles();
         this.showHandles(SECOND_ID);
+        this.secondLayer.bringToFront();
         return;
       }
       if (this.selectedId !== null && !this.engine.shapes.has(this.selectedId) && !this.emptyRows.has(this.selectedId)) this.selectedId = null;
@@ -417,7 +432,10 @@
 
     // Clicks on a shape, forwarded by the map (see MapEngine.editHandler).
     shapeClick(id) {
-      if (this.pending) return;
+      if (this.pending) {
+        if (this.pending.chosen) this.confirmFusion();
+        return;
+      }
       if (this.tool === `erase`) this.erase(id);
       else if (this.tool === `select`) this.selectShape(id, true);
     }
@@ -677,8 +695,15 @@
       return L.divIcon({ className: `handle ${className}`, iconSize: [14, 14] });
     }
 
-    makeHandle(latlng, className) {
-      const handle = L.marker(latlng, { draggable: true, icon: this.handleIcon(className), keyboard: false, zIndexOffset: 2000, bubblingMouseEvents: false });
+    // The cursor of a handle is a class (see the stylesheet), which nothing else can override.
+    setHandleCursor(handle, cursor) {
+      const element = handle.getElement();
+      element.className = element.className.replace(/\bcur-\S+/g, ``).trim();
+      element.classList.add(`cur-${cursor}`);
+    }
+
+    makeHandle(latlng, className, title) {
+      const handle = L.marker(latlng, { draggable: true, icon: this.handleIcon(className), keyboard: false, zIndexOffset: 2000, bubblingMouseEvents: false, title });
       // A listener is what keeps a click on a handle from reaching the map (which would deselect).
       handle.on(`click`, L.DomEvent.stopPropagation);
       handle.on(`dblclick`, L.DomEvent.stopPropagation);
@@ -731,7 +756,8 @@
           this.showPointHandles(id, kind);
         };
         ring.forEach((position, index) => {
-          const handle = this.makeHandle(position, `vertex`);
+          const handle = this.makeHandle(position, `vertex`, t(`handleMove`));
+          this.setHandleCursor(handle, `move`);
           handle.on(`dragstart`, () => { this.beginWork(id, kind); });
           handle.on(`drag`, (event) => {
             const at = this.snapLatLng(event.latlng, this.lastMouse && this.lastMouse.altKey, id);
@@ -753,7 +779,8 @@
         ring.forEach((position, index) => {
           const next = ring[(index + 1) % ring.length];
           const middle = [(position[0] + next[0]) / 2, (position[1] + next[1]) / 2];
-          const handle = this.makeHandle(middle, `middle`);
+          const handle = this.makeHandle(middle, `middle`, t(`handleAdd`));
+          this.setHandleCursor(handle, `copy`);
           let newIndex = -1;
           handle.on(`dragstart`, () => {
             const work = this.beginWork(id, kind);
@@ -795,7 +822,7 @@
 
       const stem = L.polyline([place(state.box, [null, `n`]), rotatePlace(state.box)], { color: `#111111`, weight: 1, interactive: false }).addTo(this.map);
       this.handles.push(stem);
-      const rotateHandle = this.makeHandle(rotatePlace(state.box), `rotate`);
+      const rotateHandle = this.makeHandle(rotatePlace(state.box), `rotate`, t(`handleRotate`));
 
       const reposition = (except) => {
         handles.forEach((other, index) => { if (other !== except) other.setLatLng(place(state.box, sides[index])); });
@@ -809,10 +836,10 @@
       };
 
       const handles = sides.map((side) => {
-        const handle = this.makeHandle(place(state.box, side), side[0] && side[1] ? `corner` : `side`);
+        const handle = this.makeHandle(place(state.box, side), side[0] && side[1] ? `corner` : `side`, t(`handleResize`));
         const dx = side[0] === `w` ? -1 : side[0] === `e` ? 1 : 0;
         const dy = side[1] === `s` ? -1 : side[1] === `n` ? 1 : 0;
-        handle.getElement().style.cursor = resizeCursor(dx, dy, state.theta);
+        this.setHandleCursor(handle, resizeCursor(dx, dy, state.theta));
         handle.on(`dragstart`, () => { this.beginWork(id, kind); });
         handle.on(`drag`, (event) => {
           const mouse = this.lastMouse || {};
@@ -844,7 +871,7 @@
         return handle;
       });
 
-      rotateHandle.getElement().style.cursor = `grab`;
+      this.setHandleCursor(rotateHandle, `grab`);
       rotateHandle.on(`dragstart`, () => { this.beginWork(id, kind); });
       rotateHandle.on(`drag`, (event) => {
         const mouse = this.lastMouse || {};
@@ -860,7 +887,7 @@
         reposition(rotateHandle);
         handles.forEach((handle, index) => {
           const [x, y] = sides[index];
-          handle.getElement().style.cursor = resizeCursor(x === `w` ? -1 : x === `e` ? 1 : 0, y === `s` ? -1 : y === `n` ? 1 : 0, state.theta);
+          this.setHandleCursor(handle, resizeCursor(x === `w` ? -1 : x === `e` ? 1 : 0, y === `s` ? -1 : y === `n` ? 1 : 0, state.theta));
         });
       });
       rotateHandle.on(`dragend`, () => { this.finishWork(); });
