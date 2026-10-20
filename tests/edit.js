@@ -156,7 +156,77 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   const snapped = (await rows(page)).find((row) => row.Name === `Colle`);
   check(`snapping joins two shapes at a corner`, Boolean(snapped) && ring(snapped).some(([lng, lat]) => Math.abs(lng - 3.860) < 1e-5 && Math.abs(lat - 43.600) < 1e-5));
 
+  // Cursors on the handles tell what they do, and follow the turn of the shape.
+  await tool(0).click();
+  await page.evaluate((id) => window.__grist.selectRow(id), square.id);
+  await page.waitForTimeout(500);
+  const cursors = () => page.evaluate(() => [...document.querySelectorAll(`.handle.corner, .handle.side`)].map((el) => el.style.cursor));
+  check(`handles have resize cursors`, JSON.stringify(await cursors()) === JSON.stringify([`nesw-resize`, `nwse-resize`, `nesw-resize`, `nwse-resize`, `ew-resize`, `ew-resize`, `ns-resize`, `ns-resize`]), JSON.stringify(await cursors()));
+  check(`the rotation handle has its own cursor`, (await page.locator(`.handle.rotate`).evaluate((el) => el.style.cursor)) === `grab`);
+
+  // Turning a rectangle with the top handle (Shift: steps of 15 degrees).
+  const squareRing = ring((await rows(page)).find((row) => row.Name === `Carre`));
+  const sizeBefore = await sizeOf(page, squareRing);
+  const handleBox = await page.locator(`.handle.rotate`).boundingBox();
+  const handle = { x: handleBox.x + 7, y: handleBox.y + 7 };
+  const centre = await at(...squareRing.slice(0, 4).reduce((sum, [lng, lat]) => [sum[0] + lat / 4, sum[1] + lng / 4], [0, 0]));
+  const radius = Math.hypot(handle.x - centre.x, handle.y - centre.y);
+  await page.mouse.move(handle.x, handle.y);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + 10, handle.y + 10, { steps: 3 });
+  await page.keyboard.down(`Shift`);
+  await page.mouse.move(centre.x + radius, centre.y + 2, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up(`Shift`);
+  await page.waitForTimeout(500);
+  const turned = (await rows(page)).find((row) => row.Name === `Carre`);
+  check(`the top handle turns a rectangle by steps`, Math.abs(turned.Shape.properties.rotation - 90) < 0.01, String(turned.Shape.properties.rotation));
+  check(`the turned rectangle is still a rectangle`, turned.Shape.properties.kind === `rectangle` && ring(turned).length === 5);
+  check(`the east handle now resizes up and down`, (await cursors())[5] === `ns-resize`, JSON.stringify(await cursors()));
+  const turnedSize = await sizeOf(page, ring(turned));
+  check(`turning keeps the size`, Math.abs(turnedSize.width - sizeBefore.height) < sizeBefore.height * 0.02, JSON.stringify({ sizeBefore, turnedSize }));
+
+  // A row of the table without shape receives the next shape drawn.
+  await page.evaluate(({ data, mapping }) => window.__grist.load(data, mapping), {
+    data: [...(await rows(page)).map((row) => ({ ...row, Shape: JSON.stringify(row.Shape) })), { id: 99, Name: `Vide`, Shape: ``, Color: `#222222` }], mapping: MAPPING
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => window.__grist.selectRow(99));
+  await page.waitForTimeout(300);
+  await tool(1).click();
+  check(`the help line names the row that will receive the shape`, /Vide/.test(await page.locator(`#edit-hint`).textContent()));
+  const countBefore = (await rows(page)).length;
+  const free1 = await at(43.5985, 3.8700);
+  await drag(free1, { x: free1.x + 60, y: free1.y + 40 });
+  await page.waitForTimeout(500);
+  const filled = (await rows(page)).find((row) => row.id === 99);
+  check(`the shape fills the selected row`, Boolean(filled.Shape) && filled.Color === `#222222` && (await rows(page)).length === countBefore, JSON.stringify({ filled, count: (await rows(page)).length, countBefore }));
+  check(`no name is asked for`, !(await page.locator(`#f-shape-name`).isVisible()));
+
+  // Escape (or a right click) leaves a shape being drawn.
+  await tool(3).click();
+  const baseline = await page.evaluate(() => document.querySelectorAll(`#map svg path`).length);
+  const startAt = await at(43.5985, 3.8850);
+  await page.mouse.click(startAt.x, startAt.y);
+  await page.mouse.click(startAt.x + 60, startAt.y);
+  await page.mouse.move(startAt.x + 60, startAt.y + 50);
+  const paths = () => page.evaluate(() => document.querySelectorAll(`#map svg path`).length);
+  const preview = async () => (await paths()) - baseline;
+  check(`a drawing in progress shows a preview`, (await preview()) > 0);
+  await page.keyboard.press(`Escape`);
+  await page.waitForTimeout(200);
+  check(`Escape cancels a drawing in progress`, (await preview()) === 0);
+  check(`Escape stays on the same tool when something was cancelled`, (await tool(3).getAttribute(`aria-pressed`)) === `true`);
+  await page.mouse.click(startAt.x, startAt.y);
+  await page.mouse.click(startAt.x + 60, startAt.y);
+  await page.mouse.click(startAt.x + 30, startAt.y + 40, { button: `right` });
+  await page.waitForTimeout(200);
+  check(`a right click cancels a drawing in progress`, (await preview()) === 0);
+  await page.keyboard.press(`Escape`);
+  check(`Escape then leaves the tool`, (await tool(0).getAttribute(`aria-pressed`)) === `true`);
+
   // Escape cancels a name dialog: nothing is written.
+  await tool(1).click();
   const beforeCancel = (await rows(page)).length;
   await drag({ x: 600, y: 500 }, { x: 680, y: 560 });
   await page.keyboard.press(`Escape`);

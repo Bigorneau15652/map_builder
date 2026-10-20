@@ -3,7 +3,7 @@
 // Nothing here knows Grist: the page that builds the editor gives it a store and a few hooks.
 (function () {
   const { t } = window.mapBuilderI18n;
-  const { serializeShape, round } = window.mapBuilderGeometry;
+  const { serializeShape, round, normalizeAngle } = window.mapBuilderGeometry;
   const crs = L.CRS.EPSG3857;
 
   const DEFAULT_COLOR = `#4A90D9`;
@@ -14,6 +14,8 @@
   const MAX_HANDLES = 500;
   const ELLIPSE_POINTS = 64;
   const MAX_UNDO = 20;
+  const ROTATE_HANDLE_PIXELS = 32;
+  const ROTATE_STEP_DEGREES = 15;
   const TOOLS = [`select`, `rectangle`, `ellipse`, `polygon`, `erase`];
 
   // Positions are kept as [lat, lng] pairs. Sizes are computed in the projection of the map
@@ -25,21 +27,56 @@
   };
   const copyPolygons = (polygons) => polygons.map((polygon) => polygon.map((ring) => ring.map((p) => [p[0], p[1]])));
 
-  // The ring of a rectangle or of an oval inscribed in a box given in projected coordinates.
-  function boxRing(kind, minX, minY, maxX, maxY) {
+  // Turns a vector by an angle (radians, counter-clockwise in the projection).
+  const turn = (x, y, angle) => L.point(x * Math.cos(angle) - y * Math.sin(angle), x * Math.sin(angle) + y * Math.cos(angle));
+
+  // The ring of a rectangle or of an oval inscribed in a box. The box is given in a frame whose
+  // origin is `center` and which is turned by `theta` (0 for a box drawn on the map: its
+  // coordinates are then the projected ones, with a centre at 0, 0).
+  function boxRing(kind, box, center = L.point(0, 0), theta = 0) {
+    const place = (x, y) => {
+      const turned = turn(x, y, theta);
+      return toPosition(L.point(center.x + turned.x, center.y + turned.y));
+    };
     if (kind === `rectangle`) {
-      return [[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]].map(([x, y]) => toPosition(L.point(x, y)));
+      return [[box.minX, box.minY], [box.maxX, box.minY], [box.maxX, box.maxY], [box.minX, box.maxY]].map(([x, y]) => place(x, y));
     }
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    const rx = (maxX - minX) / 2;
-    const ry = (maxY - minY) / 2;
+    const cx = (box.minX + box.maxX) / 2;
+    const cy = (box.minY + box.maxY) / 2;
+    const rx = (box.maxX - box.minX) / 2;
+    const ry = (box.maxY - box.minY) / 2;
     const ring = [];
     for (let i = 0; i < ELLIPSE_POINTS; i += 1) {
       const angle = (2 * Math.PI * i) / ELLIPSE_POINTS;
-      ring.push(toPosition(L.point(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle))));
+      ring.push(place(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle)));
     }
     return ring;
+  }
+
+  // The frame of a rectangle or of an oval: its centre, its turn and its box in that frame.
+  function frameOf(ring, rotation) {
+    const points = ring.map(toPoint);
+    const center = L.point(points.reduce((sum, p) => sum + p.x, 0) / points.length, points.reduce((sum, p) => sum + p.y, 0) / points.length);
+    const theta = -((rotation || 0) * Math.PI) / 180;
+    const local = points.map((p) => turn(p.x - center.x, p.y - center.y, -theta));
+    return {
+      center, theta,
+      box: {
+        minX: Math.min(...local.map((p) => p.x)), maxX: Math.max(...local.map((p) => p.x)),
+        minY: Math.min(...local.map((p) => p.y)), maxY: Math.max(...local.map((p) => p.y))
+      }
+    };
+  }
+
+  // The kind of resize cursor for a handle that sits in the direction (dx, dy) of the shape
+  // (in the projection, y up), once the shape is turned by theta.
+  function resizeCursor(dx, dy, theta) {
+    const turned = turn(dx, dy, theta);
+    const degrees = ((Math.atan2(-turned.y, turned.x) * 180) / Math.PI + 360) % 180;
+    if (degrees < 22.5 || degrees >= 157.5) return `ew-resize`;
+    if (degrees < 67.5) return `nwse-resize`;
+    if (degrees < 112.5) return `ns-resize`;
+    return `nesw-resize`;
   }
 
   // A box from two corners; with square, the box becomes a square (or a circle for an oval).
@@ -80,6 +117,7 @@
       this.layer = L.layerGroup().addTo(this.map);
       this.snapMarker = null;
       this.lastMouse = null;
+      this.emptyRows = new Map(); // rows of the table that have no shape yet: id -> name
 
       this.onMouseDown = (event) => this.pointerDown(event);
       this.onMouseMove = (event) => this.pointerMove(event);
@@ -88,6 +126,8 @@
       this.onKeyDown = (event) => this.keyDown(event);
       this.onKeyUp = (event) => this.keyUp(event);
       this.onMapClick = () => { if (this.tool === `select`) this.selectShape(null, true); };
+      this.onContextMenu = (event) => this.contextMenu(event);
+      this.onZoomEnd = () => this.refresh();
     }
 
     // ----------------------------------------------------------------- Modes
@@ -101,11 +141,13 @@
         this.map.doubleClickZoom.disable();
         this.container.addEventListener(`mousedown`, this.onMouseDown, true);
         this.container.addEventListener(`dblclick`, this.onDoubleClick, true);
+        this.container.addEventListener(`contextmenu`, this.onContextMenu, true);
         document.addEventListener(`mousemove`, this.onMouseMove);
         document.addEventListener(`mouseup`, this.onMouseUp);
         document.addEventListener(`keydown`, this.onKeyDown);
         document.addEventListener(`keyup`, this.onKeyUp);
         this.map.on(`click`, this.onMapClick);
+        this.map.on(`zoomend`, this.onZoomEnd);
         this.setTool(`select`);
         if (this.engine.selectedId !== null) this.selectShape(this.engine.selectedId, false);
       } else {
@@ -114,14 +156,16 @@
         this.engine.editHandler = null;
         this.container.removeEventListener(`mousedown`, this.onMouseDown, true);
         this.container.removeEventListener(`dblclick`, this.onDoubleClick, true);
+        this.container.removeEventListener(`contextmenu`, this.onContextMenu, true);
         document.removeEventListener(`mousemove`, this.onMouseMove);
         document.removeEventListener(`mouseup`, this.onMouseUp);
         document.removeEventListener(`keydown`, this.onKeyDown);
         document.removeEventListener(`keyup`, this.onKeyUp);
         this.map.off(`click`, this.onMapClick);
+        this.map.off(`zoomend`, this.onZoomEnd);
         this.map.doubleClickZoom.enable();
         this.map.dragging.enable();
-        this.container.classList.remove(`edit-draw`, `edit-erase`);
+        this.container.classList.remove(`edit-draw`, `edit-erase`, `edit-move`);
         this.hooks.onHint(``);
       }
       this.hooks.onTool(on ? this.tool : null);
@@ -135,7 +179,26 @@
       else if (this.selectedId !== null) this.showHandles(this.selectedId);
       this.applyCursor();
       this.hooks.onTool(tool);
-      this.hooks.onHint(t(`hint_${tool}`));
+      this.refreshHint();
+    }
+
+    // The help line: what the active tool does, and which row will receive a new shape.
+    refreshHint() {
+      if (!this.active) return;
+      const target = this.targetRow();
+      const drawing = this.tool === `rectangle` || this.tool === `ellipse` || this.tool === `polygon`;
+      this.hooks.onHint(t(`hint_${this.tool}`) + (drawing && target ? ` ${t(`hintTarget`, { name: target.name || `#${target.id}` })}` : ``));
+    }
+
+    // The selected row of the table, when it has no shape yet: the next shape drawn goes to it.
+    targetRow() {
+      const id = this.engine.selectedId;
+      return id !== null && this.emptyRows.has(id) ? { id, name: this.emptyRows.get(id) } : null;
+    }
+
+    setEmptyRows(rows) {
+      this.emptyRows = new Map(rows.map((row) => [row.id, row.name]));
+      this.refreshHint();
     }
 
     toggleSnap() {
@@ -164,9 +227,9 @@
         this.engine.previewShape(id, original);
       }
       if (this.working) {
-        const { id, original } = this.working;
+        const { id, original, originalRotation } = this.working;
         this.working = null;
-        this.engine.previewShape(id, original);
+        this.engine.previewShape(id, original, originalRotation);
       }
     }
 
@@ -182,12 +245,13 @@
         if (id !== null) this.hooks.selectRow(id);
       }
       if (id !== null && this.tool === `select`) this.showHandles(id);
+      this.refreshHint();
     }
 
     // Called after the table sent new rows: handles follow the shapes.
     refresh() {
       if (!this.active || this.drawing || this.moving || this.working) return;
-      if (this.selectedId !== null && !this.engine.shapes.has(this.selectedId)) this.selectedId = null;
+      if (this.selectedId !== null && !this.engine.shapes.has(this.selectedId) && !this.emptyRows.has(this.selectedId)) this.selectedId = null;
       this.clearHandles();
       if (this.selectedId !== null && this.tool === `select`) this.showHandles(this.selectedId);
     }
@@ -207,9 +271,22 @@
       if (this.selectedId !== id) this.selectShape(id, true);
       this.clearHandles();
       this.moving = {
-        id, kind: entry.shape.kind, original: copyPolygons(entry.shape.polygons),
+        id, kind: entry.shape.kind, rotation: entry.shape.rotation || 0, original: copyPolygons(entry.shape.polygons),
         start: toPoint([event.latlng.lat, event.latlng.lng]), startPixel: event.containerPoint, moved: false
       };
+    }
+
+    // A right click cancels the shape being drawn.
+    contextMenu(event) {
+      if (!this.active || (!this.drawing && !this.moving && !this.working)) return;
+      event.preventDefault();
+      this.cancelWork();
+      this.pressed = null;
+    }
+
+    // The mouse is over a shape: with the select tool the shape can be dragged.
+    shapeOver(over) {
+      this.container.classList.toggle(`edit-move`, over && this.tool === `select` && !this.spaceDown);
     }
 
     // ------------------------------------------------------------- Pointer
@@ -266,6 +343,9 @@
       if (event.target.closest(`.leaflet-popup, .leaflet-marker-icon`)) return;
       event.preventDefault();
       event.stopPropagation();
+      // The keys (Esc, Enter, space...) go to the widget only when it has the focus.
+      window.focus();
+      this.container.focus({ preventScroll: true });
       const at = this.snapped(event);
       const pixel = this.map.latLngToContainerPoint(at);
       if (this.tool === `polygon`) {
@@ -310,7 +390,7 @@
       drawing.current = toPoint([at.lat, at.lng]);
       const box = boxFromCorners(drawing.anchor, drawing.current, event.shiftKey);
       this.layer.clearLayers();
-      L.polygon(boxRing(drawing.kind, box.minX, box.minY, box.maxX, box.maxY), this.previewStyle()).addTo(this.layer);
+      L.polygon(boxRing(drawing.kind, box), this.previewStyle()).addTo(this.layer);
     }
 
     endBox(event) {
@@ -322,7 +402,7 @@
       const pixel = this.map.latLngToContainerPoint(crs.unproject(drawing.current));
       if (Math.abs(pixel.x - drawing.anchorPixel.x) < MIN_DRAG_PIXELS && Math.abs(pixel.y - drawing.anchorPixel.y) < MIN_DRAG_PIXELS) return;
       const box = boxFromCorners(drawing.anchor, drawing.current, event.shiftKey);
-      this.create(drawing.kind, [[boxRing(drawing.kind, box.minX, box.minY, box.maxX, box.maxY)]]);
+      this.create(drawing.kind, [[boxRing(drawing.kind, box)]], 0);
     }
 
     previewStyle() {
@@ -368,17 +448,28 @@
       this.drawing = null;
       this.layer.clearLayers();
       this.showSnap(null);
-      this.create(`polygon`, [[drawing.points.map((p) => [round(p.lat), round(p.lng)])]]);
+      this.create(`polygon`, [[drawing.points.map((p) => [round(p.lat), round(p.lng)])]], 0);
     }
 
     // ------------------------------------------------------------- Create
 
-    async create(kind, polygons) {
+    // Writes a new shape. When the selected row of the table has no shape yet, the shape goes to
+    // that row; otherwise a new row is created, after asking for its name.
+    async create(kind, polygons, rotation) {
+      const text = serializeShape(kind, polygons, rotation);
+      const target = this.targetRow();
+      if (target) {
+        await this.run(async () => {
+          await this.store.update(target.id, text);
+          this.push({ undo: () => this.store.update(this.resolve(target.id), ``) });
+        });
+        return;
+      }
       const defaultName = t(`defaultShapeName`, { number: this.engine.shapes.size + 1 });
       const name = await this.hooks.askName(defaultName);
       if (name === null) return;
       await this.run(async () => {
-        const id = await this.store.create({ name, shape: serializeShape(kind, polygons), color: DEFAULT_COLOR });
+        const id = await this.store.create({ name, shape: text, color: DEFAULT_COLOR });
         this.push({ undo: () => this.store.remove(this.resolve(id)) });
         this.hooks.selectRow(id);
       });
@@ -405,7 +496,7 @@
         this.showHandles(moving.id);
         return;
       }
-      this.commit(moving.id, moving.kind, moving.polygons, moving.original);
+      this.commit(moving.id, moving.kind, moving.polygons, moving.original, moving.rotation, moving.rotation);
     }
 
     // ----------------------------------------------------------- Retouching
@@ -432,10 +523,10 @@
     showHandles(id) {
       const entry = this.engine.shapes.get(id);
       if (!entry) return;
-      const { kind, polygons } = entry.shape;
+      const { kind, polygons, rotation } = entry.shape;
       const single = polygons.length === 1 && polygons[0].length === 1;
       if ((kind === `rectangle` && single && polygons[0][0].length === 4) || (kind === `ellipse` && single && polygons[0][0].length === ELLIPSE_POINTS)) {
-        this.showBoxHandles(id, kind, polygons);
+        this.showBoxHandles(id, kind, polygons, rotation || 0);
         return;
       }
       const vertices = polygons.reduce((sum, polygon) => sum + polygon.reduce((inner, ring) => inner + ring.length, 0), 0);
@@ -449,7 +540,11 @@
     // Starts a retouch: a working copy of the shape that the handles change.
     beginWork(id, kind) {
       const entry = this.engine.shapes.get(id);
-      this.working = { id, kind, original: copyPolygons(entry.shape.polygons), polygons: copyPolygons(entry.shape.polygons) };
+      const rotation = entry.shape.rotation || 0;
+      this.working = {
+        id, kind, originalRotation: rotation, rotation,
+        original: copyPolygons(entry.shape.polygons), polygons: copyPolygons(entry.shape.polygons)
+      };
       return this.working;
     }
 
@@ -458,7 +553,7 @@
       this.working = null;
       this.showSnap(null);
       if (!work) return;
-      this.commit(work.id, work.kind, work.polygons, work.original);
+      this.commit(work.id, work.kind, work.polygons, work.original, work.rotation, work.originalRotation);
     }
 
     // One round handle per point, and a small one in the middle of each side to add a point.
@@ -510,65 +605,112 @@
       }));
     }
 
-    // Eight handles around a rectangle or an oval: they resize it and keep its kind.
-    showBoxHandles(id, kind, polygons) {
-      const points = polygons[0][0].map(toPoint);
-      const box = {
-        minX: Math.min(...points.map((p) => p.x)), maxX: Math.max(...points.map((p) => p.x)),
-        minY: Math.min(...points.map((p) => p.y)), maxY: Math.max(...points.map((p) => p.y))
-      };
+    // Eight handles around a rectangle or an oval, to resize it (the box follows the turn of the
+    // shape), and a ninth one above it to turn it. The kind of the shape is kept.
+    showBoxHandles(id, kind, polygons, rotation) {
+      const frame = frameOf(polygons[0][0], rotation);
+      const state = { center: frame.center, theta: frame.theta, box: { ...frame.box } };
       const sides = [
         [`w`, `s`], [`e`, `s`], [`e`, `n`], [`w`, `n`], // corners: west or east, south or north
         [`w`, null], [`e`, null], [null, `s`], [null, `n`]
       ];
-      const place = (b, [x, y]) => toPosition(L.point(x === `w` ? b.minX : x === `e` ? b.maxX : (b.minX + b.maxX) / 2, y === `s` ? b.minY : y === `n` ? b.maxY : (b.minY + b.maxY) / 2));
+      const localPoint = (box, [x, y]) => L.point(
+        x === `w` ? box.minX : x === `e` ? box.maxX : (box.minX + box.maxX) / 2,
+        y === `s` ? box.minY : y === `n` ? box.maxY : (box.minY + box.maxY) / 2);
+      const toWorld = (local) => {
+        const turned = turn(local.x, local.y, state.theta);
+        return toPosition(L.point(state.center.x + turned.x, state.center.y + turned.y));
+      };
+      const place = (box, side) => toWorld(localPoint(box, side));
+      // The rotation handle sits a few pixels above the middle of the top side.
+      const metresPerPixel = Math.abs(crs.project(this.map.containerPointToLatLng([1, 0])).x - crs.project(this.map.containerPointToLatLng([0, 0])).x);
+      const rotateOffset = ROTATE_HANDLE_PIXELS * metresPerPixel;
+      const rotatePlace = (box) => toWorld(L.point((box.minX + box.maxX) / 2, box.maxY + rotateOffset));
+
+      const stem = L.polyline([place(state.box, [null, `n`]), rotatePlace(state.box)], { color: `#111111`, weight: 1, interactive: false }).addTo(this.map);
+      this.handles.push(stem);
+      const rotateHandle = this.makeHandle(rotatePlace(state.box), `rotate`);
+
+      const reposition = (except) => {
+        handles.forEach((other, index) => { if (other !== except) other.setLatLng(place(state.box, sides[index])); });
+        if (except !== rotateHandle) rotateHandle.setLatLng(rotatePlace(state.box));
+        stem.setLatLngs([place(state.box, [null, `n`]), rotatePlace(state.box)]);
+      };
+      const preview = (work) => {
+        work.polygons = [[boxRing(kind, state.box, state.center, state.theta)]];
+        work.rotation = normalizeAngle(-(state.theta * 180) / Math.PI);
+        this.engine.previewShape(id, work.polygons, work.rotation);
+      };
+
       const handles = sides.map((side) => {
-        const handle = this.makeHandle(place(box, side), side[0] && side[1] ? `corner` : `side`);
+        const handle = this.makeHandle(place(state.box, side), side[0] && side[1] ? `corner` : `side`);
+        const dx = side[0] === `w` ? -1 : side[0] === `e` ? 1 : 0;
+        const dy = side[1] === `s` ? -1 : side[1] === `n` ? 1 : 0;
+        handle.getElement().style.cursor = resizeCursor(dx, dy, state.theta);
         handle.on(`dragstart`, () => { this.beginWork(id, kind); });
         handle.on(`drag`, (event) => {
-          const work = this.working;
           const mouse = this.lastMouse || {};
           const at = this.snapLatLng(event.latlng, mouse.altKey, id);
-          const pointer = toPoint([at.lat, at.lng]);
-          const next = { ...box };
-          if (side[0] === `w`) next.minX = pointer.x;
-          if (side[0] === `e`) next.maxX = pointer.x;
-          if (side[1] === `s`) next.minY = pointer.y;
-          if (side[1] === `n`) next.maxY = pointer.y;
+          const world = toPoint([at.lat, at.lng]);
+          const pointer = turn(world.x - state.center.x, world.y - state.center.y, -state.theta);
+          const start = this.working;
+          const box = { ...frame.box };
+          if (side[0] === `w`) box.minX = pointer.x;
+          if (side[0] === `e`) box.maxX = pointer.x;
+          if (side[1] === `s`) box.minY = pointer.y;
+          if (side[1] === `n`) box.maxY = pointer.y;
           // With Shift, a corner keeps the proportions of the shape.
           if (mouse.shiftKey && side[0] && side[1]) {
-            const fixed = L.point(side[0] === `w` ? box.maxX : box.minX, side[1] === `s` ? box.maxY : box.minY);
-            const ratio = Math.max(Math.abs(pointer.x - fixed.x) / (box.maxX - box.minX), Math.abs(pointer.y - fixed.y) / (box.maxY - box.minY));
-            const width = (box.maxX - box.minX) * ratio;
-            const height = (box.maxY - box.minY) * ratio;
-            const x = side[0] === `w` ? fixed.x - width : fixed.x + width;
-            const y = side[1] === `s` ? fixed.y - height : fixed.y + height;
-            Object.assign(next, boxFromCorners(fixed, L.point(x, y), false));
+            const fixed = L.point(side[0] === `w` ? frame.box.maxX : frame.box.minX, side[1] === `s` ? frame.box.maxY : frame.box.minY);
+            const ratio = Math.max(Math.abs(pointer.x - fixed.x) / (frame.box.maxX - frame.box.minX), Math.abs(pointer.y - fixed.y) / (frame.box.maxY - frame.box.minY));
+            const width = (frame.box.maxX - frame.box.minX) * ratio;
+            const height = (frame.box.maxY - frame.box.minY) * ratio;
+            Object.assign(box, boxFromCorners(fixed, L.point(side[0] === `w` ? fixed.x - width : fixed.x + width, side[1] === `s` ? fixed.y - height : fixed.y + height), false));
           }
-          const flipped = {
-            minX: Math.min(next.minX, next.maxX), maxX: Math.max(next.minX, next.maxX),
-            minY: Math.min(next.minY, next.maxY), maxY: Math.max(next.minY, next.maxY)
+          state.box = {
+            minX: Math.min(box.minX, box.maxX), maxX: Math.max(box.minX, box.maxX),
+            minY: Math.min(box.minY, box.maxY), maxY: Math.max(box.minY, box.maxY)
           };
-          work.polygons = [[boxRing(kind, flipped.minX, flipped.minY, flipped.maxX, flipped.maxY)]];
-          this.engine.previewShape(id, work.polygons);
-          handles.forEach((other, index) => { if (other !== handle) other.setLatLng(place(flipped, sides[index])); });
+          preview(start);
+          reposition(handle);
         });
         handle.on(`dragend`, () => { this.finishWork(); });
         return handle;
       });
+
+      rotateHandle.getElement().style.cursor = `grab`;
+      rotateHandle.on(`dragstart`, () => { this.beginWork(id, kind); });
+      rotateHandle.on(`drag`, (event) => {
+        const mouse = this.lastMouse || {};
+        const world = toPoint([event.latlng.lat, event.latlng.lng]);
+        // The handle is above the shape: its direction is the "up" of the shape, 90 degrees ahead.
+        let theta = Math.atan2(world.y - state.center.y, world.x - state.center.x) - Math.PI / 2;
+        if (mouse.shiftKey) {
+          const step = (ROTATE_STEP_DEGREES * Math.PI) / 180;
+          theta = Math.round(theta / step) * step;
+        }
+        state.theta = theta;
+        preview(this.working);
+        reposition(rotateHandle);
+        handles.forEach((handle, index) => {
+          const [x, y] = sides[index];
+          handle.getElement().style.cursor = resizeCursor(x === `w` ? -1 : x === `e` ? 1 : 0, y === `s` ? -1 : y === `n` ? 1 : 0, state.theta);
+        });
+      });
+      rotateHandle.on(`dragend`, () => { this.finishWork(); });
     }
 
     // Writes a changed shape to the table, once the gesture is over.
-    async commit(id, kind, polygons, original) {
+    async commit(id, kind, polygons, original, rotation, originalRotation) {
       const rounded = polygons.map((polygon) => polygon.map((ring) => ring.map(([lat, lng]) => [round(lat), round(lng)])));
-      this.engine.previewShape(id, rounded);
-      const before = serializeShape(kind, original);
+      this.engine.previewShape(id, rounded, rotation);
+      const before = serializeShape(kind, original, originalRotation);
       const saved = await this.run(async () => {
-        await this.store.update(id, serializeShape(kind, rounded));
+        await this.store.update(id, serializeShape(kind, rounded, rotation));
         this.push({ undo: () => this.store.update(this.resolve(id), before) });
       });
       // A refused write puts the shape back where the table has it.
-      if (!saved) this.engine.previewShape(id, original);
+      if (!saved) this.engine.previewShape(id, original, originalRotation);
       this.refresh();
     }
 
@@ -578,7 +720,7 @@
       const entry = this.engine.shapes.get(id);
       if (!entry) return;
       const { shape } = entry;
-      const text = serializeShape(shape.kind, shape.polygons);
+      const text = serializeShape(shape.kind, shape.polygons, shape.rotation);
       await this.run(async () => {
         await this.store.remove(id);
         if (this.selectedId === id) this.selectedId = null;

@@ -211,3 +211,10 @@ body.catalog-window { background: #ffffff; }
 /* The name dialog of a new shape sits over the whole map. */
 #stage > .dialog-back { z-index: 1300; border-radius: 0; display: flex; align-items: center; justify-content: center; }
 #stage > .dialog-back .dialog { width: min(360px, 100%); }
+
+/* Cursors while reshaping: the shape can be dragged, the handles say what they do. */
+#map.edit-move, #map.edit-move .leaflet-interactive { cursor: move !important; }
+.handle.vertex { cursor: move; }
+.handle.middle { cursor: copy; }
+.handle.rotate { border-radius: 50%; border-color: #1b5e20; background: #c8e6c9; cursor: grab; }
+.handle.rotate:active { cursor: grabbing; }

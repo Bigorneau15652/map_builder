@@ -1,6 +1,8 @@
 // Shapes stored in the table: reading and checking the text of the Shape column.
 // The format is GeoJSON, so a shape can be exchanged with QGIS without conversion:
-//   {"type":"Feature","properties":{"kind":"rectangle"},"geometry":{"type":"Polygon","coordinates":[[[lng,lat],...]]}}
+//   {"type":"Feature","properties":{"kind":"rectangle","rotation":30},"geometry":{"type":"Polygon","coordinates":[[[lng,lat],...]]}}
+// The corners are always written in the geometry; `rotation` (degrees, clockwise on the screen)
+// only tells the widget how a rectangle or an oval is turned, to give it its handles back.
 // A bare Polygon or MultiPolygon geometry is accepted too. Nothing here touches the page.
 (function () {
   const KINDS = [`rectangle`, `ellipse`, `polygon`];
@@ -8,6 +10,14 @@
   const MAX_POLYGONS = 500;
   const MAX_RINGS = 100;
   const MAX_VERTICES = 50000;
+
+  // An angle in degrees brought into ]-180, 180] (and rounded to a hundredth of a degree).
+  function normalizeAngle(degrees) {
+    let angle = degrees % 360;
+    if (angle > 180) angle -= 360;
+    if (angle <= -180) angle += 360;
+    return Math.round(angle * 100) / 100;
+  }
 
   // Reads one position [lng, lat] and returns [lat, lng], or null when it is not valid.
   function readPosition(position) {
@@ -48,7 +58,7 @@
     return result;
   }
 
-  // Returns { kind, polygons } where polygons is a list of polygons, a polygon is a list of
+  // Returns { kind, rotation, polygons } where polygons is a list of polygons, a polygon is a list of
   // rings (the first one is the outline, the others are holes) and a ring is a list of
   // [lat, lng]. When the text is not a valid shape, returns { error: `...` }.
   function parseShape(text) {
@@ -62,11 +72,13 @@
     }
     if (!data || typeof data !== `object`) return { error: `json` };
     let kind = `polygon`;
+    let rotation = 0;
     let geometry = data;
     if (data.type === `Feature`) {
       geometry = data.geometry;
-      const wanted = data.properties && data.properties.kind;
-      if (KINDS.includes(wanted)) kind = wanted;
+      const properties = data.properties || {};
+      if (KINDS.includes(properties.kind)) kind = properties.kind;
+      if (typeof properties.rotation === `number` && Number.isFinite(properties.rotation)) rotation = normalizeAngle(properties.rotation);
     }
     if (!geometry || typeof geometry !== `object`) return { error: `type` };
 
@@ -93,7 +105,7 @@
     if (!polygons) return { error: `coordinates` };
     // Rectangles and ovals are single outlines; anything else is a plain polygon.
     if (kind !== `polygon` && (polygons.length !== 1 || polygons[0].length !== 1)) kind = `polygon`;
-    return { kind, polygons };
+    return { kind, rotation: kind === `polygon` ? 0 : rotation, polygons };
   }
 
   // Rough size of a shape (square degrees of its outline's bounding box), used to draw large
@@ -122,14 +134,16 @@
   }
 
   // Writes the text of a shape: the opposite of parseShape (the outlines are closed again).
-  function serializeShape(kind, polygons) {
+  function serializeShape(kind, polygons, rotation) {
     const close = (ring) => [...ring.map(([lat, lng]) => [round(lng), round(lat)]), [round(ring[0][1]), round(ring[0][0])]];
     const rings = (polygon) => polygon.map(close);
     const geometry = polygons.length === 1
       ? { type: `Polygon`, coordinates: rings(polygons[0]) }
       : { type: `MultiPolygon`, coordinates: polygons.map(rings) };
-    return JSON.stringify({ type: `Feature`, properties: { kind }, geometry });
+    const properties = { kind };
+    if (kind !== `polygon` && rotation) properties.rotation = normalizeAngle(rotation);
+    return JSON.stringify({ type: `Feature`, properties, geometry });
   }
 
-  window.mapBuilderGeometry = { parseShape, serializeShape, sizeOf, round };
+  window.mapBuilderGeometry = { parseShape, serializeShape, sizeOf, round, normalizeAngle };
 })();
