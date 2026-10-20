@@ -5,11 +5,12 @@
   const catalog = window.mapBuilderCatalog;
   const { normalizeConfig } = window.mapBuilderConfig;
   const {
-    CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK, ICON_EDIT, ICON_SELECT, ICON_RECTANGLE,
-    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_SNAP, ICON_UNDO, ICON_DONE
+    CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK, ICON_EDIT, ICON_RECTANGLE,
+    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_SNAP
   } = window.mapBuilderMenu;
+  // With no tool pressed, the editor is in its normal mode: select a shape, reshape it, move it.
   const TOOL_BUTTONS = [
-    [`select`, ICON_SELECT, `toolSelect`], [`rectangle`, ICON_RECTANGLE, `toolRectangle`], [`ellipse`, ICON_ELLIPSE, `toolEllipse`],
+    [`rectangle`, ICON_RECTANGLE, `toolRectangle`], [`ellipse`, ICON_ELLIPSE, `toolEllipse`],
     [`polygon`, ICON_POLYGON, `toolPolygon`], [`erase`, ICON_ERASE, `toolErase`]
   ];
   const TOAST_MS = 7000;
@@ -116,6 +117,7 @@
       this.editor.setActive(on);
       this.editButton.setAttribute(`aria-pressed`, String(on));
       this.editBar.hidden = !on;
+      this.stage.classList.toggle(`editing`, on);
       if (!on) this.hint.hidden = true;
     }
 
@@ -127,11 +129,10 @@
       }, icon(paths));
       this.editBar.textContent = ``;
       this.editBar.append(
-        ...TOOL_BUTTONS.map(([id, paths, key]) => button(key, paths, tool === id, () => this.editor.setTool(id), false)),
+        // A second click on the active tool goes back to the normal mode.
+        ...TOOL_BUTTONS.map(([id, paths, key]) => button(key, paths, tool === id, () => this.editor.setTool(tool === id ? `select` : id), false)),
         h(`span`, { class: `bar-gap`, [`aria-hidden`]: `true` }),
-        button(`toolSnap`, ICON_SNAP, this.editor.snap, () => { this.editor.toggleSnap(); this.renderEditBar(tool); }, false),
-        button(`toolUndo`, ICON_UNDO, null, () => this.editor.undo(), !this.editor.canUndo),
-        button(`toolDone`, ICON_DONE, null, () => this.toggleEditing(false), false)
+        button(`toolSnap`, ICON_SNAP, this.editor.snap, () => { this.editor.toggleSnap(); this.renderEditBar(tool); }, false)
       );
     }
 

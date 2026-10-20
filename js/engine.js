@@ -12,9 +12,8 @@
   const FIT_MAX_ZOOM = 13;
   const SELECTED_Z_OFFSET = 1000;
   const BORDER_WEIGHT = 2;
-  const SELECTED_BORDER_WEIGHT = 4;
-  const SELECTED_BORDER_COLOR = `#111111`;
-  const SELECTED_FILL_BOOST = 0.2;
+  // A selected shape is shown by a more opaque fill; its border does not change.
+  const SELECTED_FILL_BOOST = 0.3;
   const FRANCE_CENTER = [46.6, 2.4];
   const FRANCE_ZOOM = 5;
   const VIEW_SAVE_DELAY_MS = 300;
@@ -236,8 +235,8 @@
     _shapeStyle(shape, selected) {
       const fill = resolve(shape.color);
       return {
-        color: selected ? SELECTED_BORDER_COLOR : darken(fill),
-        weight: selected ? SELECTED_BORDER_WEIGHT : BORDER_WEIGHT,
+        color: darken(fill),
+        weight: BORDER_WEIGHT,
         fillColor: fill,
         fillOpacity: Math.min(1, this.shapeOpacity + (selected ? SELECTED_FILL_BOOST : 0))
       };

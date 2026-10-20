@@ -30,9 +30,19 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await page.evaluate(() => document.querySelector(`#stage`).dispatchEvent(new Event(`pointermove`)));
   await page.locator(`#tools button[aria-pressed]`).click();
   check(`the toolbar opens`, await page.locator(`#edit-bar`).isVisible());
+  check(`the coloured frame shows while editing`, await page.evaluate(() => getComputedStyle(document.querySelector(`#stage`), `::after`).borderTopWidth === `4px`));
+  check(`the toolbar has four tools and snapping only`, (await page.locator(`#edit-bar button`).count()) === 5);
   check(`the help line shows`, (await page.locator(`#edit-hint`).textContent()).length > 20);
 
+  // The tool buttons are, in this order: rectangle, oval, free shape, eraser (then snapping).
   const tool = (index) => page.locator(`#edit-bar button`).nth(index);
+  const use = async (index) => {
+    if ((await tool(index).getAttribute(`aria-pressed`)) !== `true`) await tool(index).click();
+  };
+  const normalMode = async () => {
+    for (let index = 0; index < 4; index += 1) if ((await tool(index).getAttribute(`aria-pressed`)) === `true`) await tool(index).click();
+  };
+  const pressedTools = () => page.evaluate(() => [...document.querySelectorAll(`#edit-bar button`)].slice(0, 4).filter((b) => b.getAttribute(`aria-pressed`) === `true`).length);
   const dialogName = async (name) => {
     await page.locator(`#f-shape-name`).fill(name);
     await page.locator(`.dialog button[type=submit]`).click();
@@ -49,7 +59,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   };
 
   // Rectangle with Shift: a square.
-  await tool(1).click();
+  await use(0);
   const origin = await at(43.612, 3.866);
   await drag(origin, { x: origin.x + 90, y: origin.y + 40 }, { shift: true });
   await page.waitForTimeout(200);
@@ -64,10 +74,11 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   }
 
   // Oval without Shift, then with Shift (a circle).
-  await tool(2).click();
+  await use(1);
   const base = await at(43.603, 3.866);
   await drag(base, { x: base.x + 120, y: base.y + 40 });
   await dialogName(`Ovale`);
+  await use(1);
   await drag({ x: base.x + 200, y: base.y }, { x: base.x + 280, y: base.y + 30 }, { shift: true });
   await dialogName(`Cercle`);
   all = await rows(page);
@@ -80,7 +91,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   check(`Shift gives a circle`, Boolean(circle) && Math.abs(circleSize.width / circleSize.height - 1) < 0.03, JSON.stringify(circleSize));
 
   // Free shape: four clicks, then a click on the first point.
-  await tool(3).click();
+  await use(2);
   const corner = await at(43.617, 3.880);
   const points = [[0, 0], [70, 0], [90, 60], [10, 80]].map(([dx, dy]) => ({ x: corner.x + dx, y: corner.y + dy }));
   for (const point of points) {
@@ -95,7 +106,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   // Space + drag moves the map and draws nothing.
   const before = (await rows(page)).length;
   const centerBefore = await page.evaluate(() => window.__map.getCenter().lat);
-  await tool(1).click();
+  await use(0);
   await page.keyboard.down(` `);
   await drag({ x: 500, y: 300 }, { x: 560, y: 380 });
   await page.keyboard.up(` `);
@@ -103,7 +114,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   check(`space and drag draws nothing`, (await rows(page)).length === before && !(await page.locator(`#f-shape-name`).isVisible()));
 
   // Select and reshape: eight handles on a rectangle; dragging a corner resizes it.
-  await tool(0).click();
+  await normalMode();
   await page.evaluate(() => window.__grist.selectRow(2));
   await page.waitForTimeout(500);
   check(`a rectangle has eight handles`, (await page.locator(`.handle.corner, .handle.side`).count()) === 8);
@@ -137,7 +148,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   check(`dragging a shape moves it`, newRing[0][0] > oldRing[0][0] + 0.0001 && newRing.length === oldRing.length);
 
   // Eraser and undo: the row stays, only its Shape is emptied.
-  await tool(4).click();
+  await use(3);
   const count = (await rows(page)).length;
   const circleRing = ring((await rows(page)).find((row) => row.Name === `Cercle`));
   const victim = await at((circleRing[0][1] + circleRing[32][1]) / 2, (circleRing[0][0] + circleRing[32][0]) / 2);
@@ -146,12 +157,12 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   const erased = (await rows(page)).find((row) => row.Name === `Cercle`);
   check(`the eraser empties the Shape and keeps the row`, (await rows(page)).length === count && Boolean(erased) && !erased.Shape && erased.Color === `#4A90D9`);
   check(`the erased shape is announced`, /Cercle/.test(await page.locator(`#toast`).textContent()));
-  await page.locator(`#edit-bar button`).nth(6).click();
+  await page.keyboard.press(`Control+z`);
   await page.waitForTimeout(500);
-  check(`undo brings the shape back`, Boolean((await rows(page)).find((row) => row.Name === `Cercle`).Shape));
+  check(`Ctrl+Z brings the shape back`, Boolean((await rows(page)).find((row) => row.Name === `Cercle`).Shape));
 
   // Snapping: a rectangle started near a corner of the site takes that corner exactly.
-  await tool(1).click();
+  await use(0);
   const siteCorner = await at(43.600, 3.860);
   await drag({ x: siteCorner.x + 4, y: siteCorner.y - 3 }, { x: siteCorner.x + 50, y: siteCorner.y - 50 });
   await dialogName(`Colle`);
@@ -159,7 +170,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   check(`snapping joins two shapes at a corner`, Boolean(snapped) && ring(snapped).some(([lng, lat]) => Math.abs(lng - 3.860) < 1e-5 && Math.abs(lat - 43.600) < 1e-5));
 
   // Cursors on the handles tell what they do, and follow the turn of the shape.
-  await tool(0).click();
+  await normalMode();
   await page.evaluate((id) => window.__grist.selectRow(id), square.id);
   await page.waitForTimeout(500);
   const cursors = () => page.evaluate(() => [...document.querySelectorAll(`.handle.corner, .handle.side`)].map((el) => el.style.cursor));
@@ -195,7 +206,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await page.waitForTimeout(400);
   await page.evaluate(() => window.__grist.selectRow(99));
   await page.waitForTimeout(300);
-  await tool(1).click();
+  await use(0);
   check(`the help line names the row that will receive the shape`, /Vide/.test(await page.locator(`#edit-hint`).textContent()));
   const countBefore = (await rows(page)).length;
   const free1 = await at(43.5985, 3.8700);
@@ -206,7 +217,7 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   check(`no name is asked for`, !(await page.locator(`#f-shape-name`).isVisible()));
 
   // Escape (or a right click) leaves a shape being drawn.
-  await tool(3).click();
+  await use(2);
   const baseline = await page.evaluate(() => document.querySelectorAll(`#map svg path`).length);
   const startAt = await at(43.5985, 3.8850);
   await page.mouse.click(startAt.x, startAt.y);
@@ -218,17 +229,17 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await page.keyboard.press(`Escape`);
   await page.waitForTimeout(200);
   check(`Escape cancels a drawing in progress`, (await preview()) === 0);
-  check(`Escape stays on the same tool when something was cancelled`, (await tool(3).getAttribute(`aria-pressed`)) === `true`);
+  check(`Escape stays on the same tool when something was cancelled`, (await tool(2).getAttribute(`aria-pressed`)) === `true`);
   await page.mouse.click(startAt.x, startAt.y);
   await page.mouse.click(startAt.x + 60, startAt.y);
   await page.mouse.click(startAt.x + 30, startAt.y + 40, { button: `right` });
   await page.waitForTimeout(200);
   check(`a right click cancels a drawing in progress`, (await preview()) === 0);
   await page.keyboard.press(`Escape`);
-  check(`Escape then leaves the tool`, (await tool(0).getAttribute(`aria-pressed`)) === `true`);
+  check(`Escape then leaves the tool`, (await pressedTools()) === 0);
 
   // Escape cancels a name dialog: nothing is written.
-  await tool(1).click();
+  await use(0);
   const beforeCancel = (await rows(page)).length;
   await drag({ x: 600, y: 500 }, { x: 680, y: 560 });
   await page.keyboard.press(`Escape`);
@@ -237,13 +248,15 @@ const sizeOf = (page, points) => page.evaluate((list) => {
 
   // A refused write is reported and the map goes back to the table.
   await page.evaluate(() => { window.__table.failWrites = true; });
+  await use(0);
   await drag({ x: 600, y: 500 }, { x: 680, y: 560 });
   await dialogName(`Refuse`);
   check(`a refused write is reported`, /could not be changed|n'a pas pu/.test(await page.locator(`#toast`).textContent()));
   await page.screenshot({ path: path.join(OUT, `builder-4-editing.png`) });
 
   // Leaving the drawing mode.
-  await page.locator(`#edit-bar button`).nth(7).click();
+  await page.locator(`#tools button[aria-pressed]`).click();
+  check(`the coloured frame goes away`, !(await page.evaluate(() => document.querySelector(`#stage`).classList.contains(`editing`))));
   check(`the toolbar closes`, !(await page.locator(`#edit-bar`).isVisible()));
   check(`no page error`, errors.length === 0, errors.join(` | `));
 

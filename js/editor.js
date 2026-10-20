@@ -457,6 +457,8 @@
     // that row; otherwise a new row is created, after asking for its name.
     async create(kind, polygons, rotation) {
       const text = serializeShape(kind, polygons, rotation);
+      // Once a shape is drawn (or given up), the editor goes back to the select mode.
+      this.setTool(`select`);
       const target = this.targetRow();
       if (target) {
         await this.run(async () => {
@@ -740,16 +742,11 @@
     push(action) {
       this.undoStack.push(action);
       if (this.undoStack.length > MAX_UNDO) this.undoStack.shift();
-      this.hooks.onTool(this.tool);
     }
 
-    get canUndo() {
-      return this.undoStack.length > 0;
-    }
-
+    // Ctrl+Z (Cmd+Z on a Mac) while the widget has the focus.
     async undo() {
       const action = this.undoStack.pop();
-      this.hooks.onTool(this.tool);
       if (!action) return;
       await this.run(() => action.undo());
     }
