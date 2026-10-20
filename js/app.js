@@ -6,11 +6,16 @@
   const { normalizeConfig } = window.mapBuilderConfig;
   const {
     CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK, ICON_EDIT, ICON_RECTANGLE,
-    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_FUSION, ICON_SNAP
+    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_FUSION, ICON_FUSION_ADD, ICON_FUSION_FIRST, ICON_FUSION_SECOND, ICON_SNAP
   } = window.mapBuilderMenu;
   // With no tool pressed, the editor is in its normal mode: select a shape, reshape it, move it.
   const SHAPE_BUTTONS = [
     [`rectangle`, ICON_RECTANGLE, `toolRectangle`], [`ellipse`, ICON_ELLIPSE, `toolEllipse`], [`polygon`, ICON_POLYGON, `toolPolygon`]
+  ];
+  // The three operations of a fusion, shown as buttons next to the fusion button once the second
+  // shape is drawn: 1 + 2, 1 - 2 and 2 - 1.
+  const FUSION_BUTTONS = [
+    [`add`, ICON_FUSION_ADD, `fusionOpAdd`], [`first`, ICON_FUSION_FIRST, `fusionOpFirst`], [`second`, ICON_FUSION_SECOND, `fusionOpSecond`]
   ];
   // The version of the widget, read from the address of this script (?v=...), for the tooltip.
   const VERSION = (() => {
@@ -100,7 +105,6 @@
         onHint: (text) => { this.hint.textContent = text; this.hint.hidden = !text; },
         onMessage: (text) => this.toast(text),
         askName: (defaultName) => this.askName(defaultName),
-        askFusion: (preview) => this.askFusion(preview),
         selectRow: (id) => this.selectFromMap(id)
       });
       this.editButton = h(`button`, {
@@ -135,48 +139,24 @@
       }, icon(paths));
       this.editBar.textContent = ``;
       const gap = () => h(`span`, { class: `bar-gap`, [`aria-hidden`]: `true` });
+      const pending = this.editor.pending;
+      // While a fusion waits for its operation, the shape tools and the eraser are put aside.
+      const fusionRow = h(`div`, { class: `bar-row` },
+        button(`toolFusion`, ICON_FUSION, this.editor.fusion || Boolean(pending), () => this.editor.setFusion(!this.editor.fusion), Boolean(pending)));
+      if (pending) {
+        fusionRow.append(h(`div`, { class: `fusion-choices` },
+          ...FUSION_BUTTONS.map(([operation, paths, key]) => button(key, paths, pending.operation === operation, () => this.editor.setFusionOperation(operation), false))));
+      }
       this.editBar.append(
         // A second click on the active tool goes back to the normal mode.
-        ...SHAPE_BUTTONS.map(([id, paths, key]) => button(key, paths, tool === id, () => this.editor.setTool(tool === id ? `select` : id), false)),
+        ...SHAPE_BUTTONS.map(([id, paths, key]) => button(key, paths, tool === id, () => this.editor.setTool(tool === id ? `select` : id), Boolean(pending))),
         gap(),
-        button(`toolErase`, ICON_ERASE, tool === `erase`, () => this.editor.setTool(tool === `erase` ? `select` : `erase`), false),
+        button(`toolErase`, ICON_ERASE, tool === `erase`, () => this.editor.setTool(tool === `erase` ? `select` : `erase`), Boolean(pending)),
         gap(),
-        button(`toolFusion`, ICON_FUSION, this.editor.fusion, () => this.editor.setFusion(!this.editor.fusion), false),
+        fusionRow,
         gap(),
         button(`toolSnap`, ICON_SNAP, this.editor.snap, () => { this.editor.toggleSnap(); this.renderEditBar(tool); }, false)
       );
-    }
-
-    // The choice offered after the second shape of a fusion is drawn: the result of 1 + 2, 1 - 2
-    // or 2 - 1 is shown on the map as the choice changes. Resolves to `add`, `first`, `second`, or
-    // null when the person gives up. preview(operation) returns false when that result is empty.
-    askFusion(preview) {
-      return new Promise((resolve) => {
-        const choices = [[`add`, `fusionAdd`], [`first`, `fusionFirstMinus`], [`second`, `fusionSecondMinus`]];
-        const message = h(`p`, { class: `error`, role: `alert` });
-        const ok = h(`button`, { type: `submit`, class: `action`, text: t(`ok`) });
-        let current = `add`;
-        const show = () => {
-          const fine = preview(current);
-          message.textContent = fine ? `` : t(`fusionEmpty`);
-          ok.disabled = !fine;
-        };
-        const close = (value) => { panel.remove(); document.removeEventListener(`keydown`, onKey, true); resolve(value); };
-        const onKey = (event) => { if (event.key === `Escape`) { event.stopPropagation(); close(null); } };
-        const panel = h(`form`, { id: `fusion-panel`, role: `dialog`, [`aria-label`]: t(`fusionTitle`), onsubmit: (event) => { event.preventDefault(); if (!ok.disabled) close(current); } },
-          h(`strong`, { text: t(`fusionTitle`) }),
-          ...choices.map(([value, key]) => h(`label`, { class: `choice` },
-            h(`input`, { type: `radio`, name: `fusion-choice`, value, checked: value === current, onchange: () => { current = value; show(); } }),
-            ` ${t(key)}`)),
-          message,
-          h(`div`, { class: `buttons` },
-            h(`button`, { type: `button`, class: `outline`, text: t(`cancel`), onclick: () => close(null) }),
-            ok));
-        document.addEventListener(`keydown`, onKey, true);
-        this.stage.append(panel);
-        show();
-        ok.focus();
-      });
     }
 
     // A short message at the bottom of the map (a refused write, an erased shape...).
