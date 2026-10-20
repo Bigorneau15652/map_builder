@@ -57,6 +57,16 @@ const ROWS = [
   await page.waitForTimeout(300);
   check(`click selects a row in Grist`, await page.evaluate(() => window.__selected !== null));
 
+  // Selecting a row of the table centres the map on its pin or on its shape, keeping the zoom.
+  const centre = () => page.evaluate(() => { const c = window.__map.getCenter(); return { lat: c.lat, lng: c.lng, zoom: window.__map.getZoom() }; });
+  for (const [id, lat, lng] of [[5, 43.603, 3.862], [6, 43.594, 3.845]]) {
+    const zoomBefore = (await centre()).zoom;
+    await page.evaluate((row) => window.__grist.selectRow(row), id);
+    await page.waitForTimeout(1000);
+    const now = await centre();
+    check(`row ${id} is centred, zoom unchanged`, Math.abs(now.lat - lat) < 0.002 && Math.abs(now.lng - lng) < 0.004 && now.zoom === zoomBefore, JSON.stringify(now));
+  }
+
   // A pin label is text, never HTML.
   await page.evaluate(() => window.__grist.selectRow(5));
   await page.waitForTimeout(800);

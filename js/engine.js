@@ -269,6 +269,12 @@
     // The label of a shape, opened at a position. It is built only when it opens, as for the pins.
     _showShapePopup(id, latlng) {
       if (!this.shapes.has(id)) return;
+      // A row with a pin and a shape has one label: the one of its pin.
+      const pin = this.entries.get(id);
+      if (pin && pin.marker._icon) {
+        pin.marker.openPopup();
+        return;
+      }
       L.popup({ className: `map-popup`, rowId: id })
         .setLatLng(latlng)
         .setContent(this._popupContent(id))
@@ -401,24 +407,21 @@
         if (this.map.getBounds().contains(position)) return;
       }
 
-      // The zoom chosen by the user is kept: the map is only centred on the row.
+      // The zoom chosen by the user is kept: the map is only centred on the row. The label opens
+      // once the map has moved, because opening it earlier would stop the movement.
       this.map.panTo(position);
-      if (!current.marker) {
-        if (!this.editHandler) this._showShapePopup(id, position);
-        return;
-      }
-      // A pin hidden inside a cluster is only centred (its cluster is highlighted); its label
-      // opens when the pin is visible.
       const marker = current.marker;
-      if (marker._icon) {
-        marker.openPopup();
-        return;
-      }
-      // A pin outside the view is drawn once the map has moved; its label then opens, unless
-      // another row was selected in the meantime or the pin is still inside a cluster.
-      this.map.once(`moveend`, () => setTimeout(() => {
-        if (this.selectedId === id && marker._icon) marker.openPopup();
-      }, 0));
+      const showLabel = () => {
+        if (this.selectedId !== id) return;
+        if (marker) {
+          // A pin hidden inside a cluster has no label until the cluster opens.
+          if (marker._icon) marker.openPopup();
+        } else if (!this.editHandler) {
+          this._showShapePopup(id, position);
+        }
+      };
+      if (this.map.getCenter().distanceTo(position) < 1) showLabel();
+      else this.map.once(`moveend`, () => setTimeout(showLabel, 0));
     }
 
     clearSelection() {
