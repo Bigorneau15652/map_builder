@@ -225,16 +225,7 @@ body.catalog-window { background: #ffffff; }
   border: 4px solid #d81b60;
 }
 
-/* The choice of a fusion: a small panel at the bottom of the map, the map stays visible. */
-#fusion-panel {
-  position: absolute; z-index: 1300; left: 44px; right: 44px; bottom: 44px;
-  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px;
-  background: #ffffff; color: var(--ink); border: 2px solid #d81b60; border-radius: 8px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3); font-size: 13px; line-height: 1.4;
-  white-space: normal; overflow-wrap: anywhere;
-}
-#fusion-panel .choice { display: flex; gap: 6px; align-items: flex-start; cursor: pointer; }
-#fusion-panel .buttons { display: flex; justify-content: flex-end; gap: 8px; }
-#fusion-panel .error { margin: 0; color: #8a1c1c; font-weight: 600; }
-#fusion-panel button:disabled { opacity: 1; background: #e4e7eb; color: #52606d; border-color: #9aa5b1; cursor: default; }
+/* The three operations of a fusion appear to the right of the fusion button. */
+.bar-row { display: flex; align-items: center; gap: 4px; }
+.fusion-choices { display: flex; gap: 4px; }
 .bar-gap { height: 14px; }

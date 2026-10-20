@@ -272,7 +272,8 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   const mapAfter = await page.evaluate(() => { const c = window.__map.getCenter(); return [c.lat, c.lng]; });
   check(`a click on a shape does not recentre the map while drawing`, JSON.stringify(mapBefore) === JSON.stringify(mapAfter), JSON.stringify({ mapBefore, mapAfter }));
 
-  // Fusion: a second shape is drawn, then the result of 1 + 2, 1 - 2 or 2 - 1 is chosen.
+  // Fusion: the second shape is drawn, then moved and resized, the operation is chosen with the
+  // three buttons and Enter writes the result.
   await normalMode();
   await page.evaluate(() => window.__grist.selectRow(1));
   await page.waitForTimeout(500);
@@ -280,44 +281,75 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   check(`the fusion button is pressed`, (await tool(4).getAttribute(`aria-pressed`)) === `true`);
   check(`the help line explains the fusion`, /1 \+ 2/.test(await page.locator(`#edit-hint`).textContent()));
   const rowsBeforeFusion = (await rows(page)).length;
+  const choices = page.locator(`.fusion-choices button`);
+  check(`the three operation buttons wait for the second shape`, (await choices.count()) === 0);
   await use(0);
   const holeFrom = await at(43.6135, 3.8715);
   await drag(holeFrom, { x: holeFrom.x + 40, y: holeFrom.y + 30 });
   await page.waitForTimeout(400);
-  check(`the fusion panel offers the three results`, (await page.locator(`#fusion-panel input[type=radio]`).count()) === 3);
+  check(`three operation buttons appear next to the fusion button`, (await choices.count()) === 3);
   check(`no name is asked for and no row is created`, !(await page.locator(`#f-shape-name`).isVisible()) && (await rows(page)).length === rowsBeforeFusion);
-  await page.locator(`#fusion-panel input[value=first]`).check();
+  check(`the second shape has its handles`, (await page.locator(`.handle.corner, .handle.side`).count()) === 8);
+  check(`1 + 2 is shown first`, (await choices.nth(0).getAttribute(`aria-pressed`)) === `true`);
+  await choices.nth(1).click();
   await page.waitForTimeout(200);
-  check(`nothing is written before the choice is validated`, ring((await rows(page)).find((row) => row.id === 1)) !== undefined && (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1);
+  check(`the chosen operation is pressed`, (await choices.nth(1).getAttribute(`aria-pressed`)) === `true` && (await choices.nth(0).getAttribute(`aria-pressed`)) === `false`);
+  check(`nothing is written before Enter`, (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1);
+
+  // The second shape is moved by dragging it, then resized with a corner handle.
+  const centreOfSecond = { x: holeFrom.x + 20, y: holeFrom.y + 15 };
+  await drag(centreOfSecond, { x: centreOfSecond.x + 25, y: centreOfSecond.y });
+  await page.waitForTimeout(300);
+  const cornerBox = await page.locator(`.handle.corner`).nth(2).boundingBox();
+  await drag({ x: cornerBox.x + 7, y: cornerBox.y + 7 }, { x: cornerBox.x + 22, y: cornerBox.y - 8 });
+  await page.waitForTimeout(300);
+  check(`nothing is written while the second shape is adjusted`, (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1 && (await rows(page)).length === rowsBeforeFusion);
   await page.screenshot({ path: path.join(OUT, `builder-7-fusion.png`) });
-  await page.locator(`#fusion-panel button[type=submit]`).click();
+  await page.keyboard.press(`Enter`);
   await page.waitForTimeout(500);
   const withHole = (await rows(page)).find((row) => row.id === 1);
-  check(`1 - 2 cuts a hole in the shape`, withHole.Shape.geometry.type === `Polygon` && withHole.Shape.geometry.coordinates.length === 2, JSON.stringify(withHole.Shape.geometry.coordinates.length));
+  check(`Enter writes 1 - 2: a hole in the shape`, withHole.Shape.geometry.type === `Polygon` && withHole.Shape.geometry.coordinates.length === 2, String(withHole.Shape.geometry.coordinates.length));
+  const holeLngs = withHole.Shape.geometry.coordinates[1].map((point) => point[0]);
+  const movedLng = await page.evaluate((x) => window.__map.containerPointToLatLng([x, 100]).lng, holeFrom.x + 25 - (await page.evaluate(() => window.__map.getContainer().getBoundingClientRect().left)));
+  check(`the hole is where the second shape was moved`, Math.abs(Math.min(...holeLngs) - movedLng) < 0.0015, `${Math.min(...holeLngs)} / ${movedLng}`);
   check(`the other columns of the row are kept`, withHole.Name === `Site` && withHole.Color === `#4A90D9` && (await rows(page)).length === rowsBeforeFusion);
+  check(`the operation buttons are gone`, (await choices.count()) === 0);
   await page.keyboard.press(`Control+z`);
   await page.waitForTimeout(500);
   check(`Ctrl+Z gives the shape back`, (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1);
 
-  // Giving up writes nothing; 2 - 1 of a shape inside the first one is empty; 1 + 2 joins them.
+  // Esc gives up and writes nothing.
   await tool(4).click();
   await use(0);
   await drag(holeFrom, { x: holeFrom.x + 40, y: holeFrom.y + 30 });
-  await page.locator(`#fusion-panel input[value=second]`).check();
-  await page.waitForTimeout(200);
-  check(`an empty result cannot be validated`, await page.locator(`#fusion-panel button[type=submit]`).isDisabled());
-  await page.locator(`#fusion-panel button[type=button]`).click();
   await page.waitForTimeout(300);
-  check(`giving up writes nothing`, (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1 && !(await page.locator(`#fusion-panel`).count()));
+  await page.keyboard.press(`Escape`);
+  await page.waitForTimeout(300);
+  check(`Esc removes the buttons and writes nothing`, (await choices.count()) === 0 && (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1 && (await page.locator(`.handle`).count()) === 8 + 1);
+
+  // An empty result cannot be validated: 2 - 1 of a second shape inside the first one.
+  await tool(4).click();
+  await use(0);
+  await drag(holeFrom, { x: holeFrom.x + 40, y: holeFrom.y + 30 });
+  await choices.nth(2).click();
+  await page.waitForTimeout(300);
+  check(`an empty result is announced`, /vide|empty/.test(await page.locator(`#toast`).textContent()));
+  await page.keyboard.press(`Enter`);
+  await page.waitForTimeout(300);
+  check(`Enter does nothing on an empty result`, (await choices.count()) === 3 && (await rows(page)).find((row) => row.id === 1).Shape.geometry.coordinates.length === 1);
+  await page.keyboard.press(`Escape`);
+  await page.waitForTimeout(200);
+
+  // 1 + 2 of two overlapping shapes joins them in one outline.
   await tool(4).click();
   await use(0);
   const cornerNE = await at(43.620, 3.890);
   await drag({ x: cornerNE.x - 30, y: cornerNE.y + 30 }, { x: cornerNE.x + 40, y: cornerNE.y - 40 });
   await page.waitForTimeout(300);
-  await page.locator(`#fusion-panel button[type=submit]`).click();
+  await page.keyboard.press(`Enter`);
   await page.waitForTimeout(500);
   const joined = (await rows(page)).find((row) => row.id === 1);
-  const joinedLng = ring(joined).map((p) => p[0]);
+  const joinedLng = ring(joined).map((point) => point[0]);
   check(`1 + 2 joins the two shapes in one outline`, joined.Shape.geometry.type === `Polygon` && Math.max(...joinedLng) > 3.8905, String(Math.max(...joinedLng)));
   await page.keyboard.press(`Control+z`);
   await page.waitForTimeout(400);
