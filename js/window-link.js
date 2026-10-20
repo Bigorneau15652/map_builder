@@ -7,7 +7,7 @@
     // spec: { page, name, width, height } of the window. getState(): the full state to send.
     // handlers: onSelect(id), onConfig(patch), onClosed().
     constructor(spec, getState, handlers) {
-      this.url = new URL(`${spec.page}?v=0.1.0`, location.href).href;
+      this.url = new URL(`${spec.page}?v=0.2.0`, location.href).href;
       this.name = spec.name;
       this.size = { width: spec.width, height: spec.height };
       this.getState = getState;

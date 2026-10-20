@@ -44,6 +44,15 @@
   const ICON_MAP = [`M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z`, `M9 4v14`, `M15 6v14`];
   const ICON_EXPAND = [`M15 3h6v6`, `M9 21H3v-6`, `M21 3l-7 7`, `M3 21l7-7`];
   const ICON_DOCK = [`M14 10h6V4`, `M10 14H4v6`, `M20 4l-7 7`, `M4 20l7-7`];
+  const ICON_EDIT = [`M12 20h9`, `M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z`];
+  const ICON_SELECT = [`M5 3l14 7-6 2-2 6z`];
+  const ICON_RECTANGLE = [`M4 6h16v12H4z`];
+  const ICON_ELLIPSE = [`M3 12a9 6 0 1 0 18 0a9 6 0 1 0-18 0`];
+  const ICON_POLYGON = [`M5 18l3-12 9 3 3 9z`];
+  const ICON_ERASE = [`M20 20H8l-4-4a1.5 1.5 0 0 1 0-2l9-9a1.5 1.5 0 0 1 2 0l5 5a1.5 1.5 0 0 1 0 2l-6 6`, `M7 11l6 6`];
+  const ICON_SNAP = [`M12 3v4`, `M12 17v4`, `M3 12h4`, `M17 12h4`, `M12 10a2 2 0 1 0 .01 0z`];
+  const ICON_UNDO = [`M9 14L4 9l5-5`, `M4 9h11a5 5 0 0 1 0 10h-4`];
+  const ICON_DONE = [`M5 13l4 4L19 7`];
   function newId() {
     return `custom:${window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)}`;
   }
@@ -308,5 +317,8 @@
     }
   }
 
-  window.mapBuilderMenu = { CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK };
+  window.mapBuilderMenu = {
+    CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK, ICON_EDIT, ICON_SELECT, ICON_RECTANGLE,
+    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_SNAP, ICON_UNDO, ICON_DONE
+  };
 })();

@@ -178,3 +178,36 @@ body.catalog-window { background: #ffffff; }
   position: relative; top: auto; right: auto; width: auto; height: 100%; max-height: none;
   border: 0; border-radius: 0; box-shadow: none;
 }
+
+/* ----------------------------------------------------------- Drawing mode */
+#edit-bar {
+  position: absolute; top: 4px; left: 4px; z-index: 1000;
+  display: flex; flex-direction: column; gap: 4px;
+}
+#edit-bar[hidden] { display: none; }
+.tool[aria-pressed="true"] { background: #1c5d8c; color: #ffffff; border-color: #123f61; }
+.tool:disabled { background: #e4e7eb; color: #7b8794; cursor: default; }
+.bar-gap { height: 8px; }
+
+/* Help line and messages: solid colours, wrapped, never truncated. */
+#edit-hint, #toast {
+  position: absolute; z-index: 1100; margin: 0; padding: 6px 10px;
+  background: #1f2933; color: #ffffff; border: 2px solid #ffffff; border-radius: 6px;
+  font-size: 13px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere;
+}
+#edit-hint { top: 4px; left: 44px; right: 44px; pointer-events: none; }
+#toast { left: 44px; right: 44px; bottom: 44px; background: #7a2e00; }
+#edit-hint[hidden], #toast[hidden] { display: none; }
+
+#map.edit-draw, #map.edit-draw .leaflet-interactive, #map.edit-draw .leaflet-grab { cursor: crosshair !important; }
+#map.edit-erase, #map.edit-erase .leaflet-interactive, #map.edit-erase .leaflet-grab { cursor: not-allowed !important; }
+
+/* Handles to reshape a shape. */
+.handle { background: #ffffff; border: 2px solid #111111; cursor: move; }
+.handle.vertex, .handle.middle { border-radius: 50%; }
+.handle.middle { background: rgba(255, 255, 255, 0.7); border-color: #52606d; }
+.handle.corner, .handle.side { border-radius: 2px; }
+
+/* The name dialog of a new shape sits over the whole map. */
+#stage > .dialog-back { z-index: 1300; border-radius: 0; display: flex; align-items: center; justify-content: center; }
+#stage > .dialog-back .dialog { width: min(360px, 100%); }
