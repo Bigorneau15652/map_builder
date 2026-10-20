@@ -1,0 +1,180 @@
+/* map_builder styles. Every control sets both background and colour, so the operating system
+   dark mode can never turn text invisible. */
+:root {
+  color-scheme: light;
+  --ink: #1f2933;
+  --ink-soft: #3e4c59;
+  --line: #9aa5b1;
+  --panel: #ffffff;
+  --accent: #1c5d8c;
+  --focus: #f2b705;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; background: #e4e7eb; color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; }
+
+#app { display: flex; flex-direction: column; height: 100%; }
+
+/* Banners: solid colours, wrap on narrow panels, never truncated. */
+.banner {
+  margin: 0;
+  padding: 10px 14px;
+  background: #ffe08a;
+  color: #3d2800;
+  border-bottom: 2px solid #8a5a00;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.banner[hidden] { display: none; }
+
+#stage { position: relative; flex: 1; min-height: 0; }
+#map { position: absolute; inset: 0; background: #e4e7eb; }
+
+/* Message shown instead of the map (no data, or map displayed in another window). */
+#docked {
+  position: absolute; inset: 0; z-index: 1200;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: 24px; background: #f5f7fa; color: var(--ink); text-align: center;
+  font-size: 14px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere;
+}
+#docked[hidden] { display: none; }
+
+/* ----------------------------------------------------------------- Tools */
+/* Column of buttons and zoom slider on the right edge of the map. */
+#tools {
+  position: absolute; top: 4px; right: 4px; z-index: 1000;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+#tools[hidden] { display: none; }
+
+.tool {
+  width: 30px; height: 30px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2px solid var(--line); border-radius: 6px;
+  background: #ffffff; color: var(--ink); cursor: pointer;
+}
+.tool:hover { background: #e4e7eb; }
+.tool svg { width: 18px; height: 18px; }
+.tool:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--focus); outline-offset: 1px;
+}
+
+/* Buttons and sliders fade after three seconds without movement over the map. */
+#tools, .transparency { transition: opacity 0.25s, visibility 0.25s; }
+#stage.idle #tools, #stage.idle .transparency { opacity: 0; visibility: hidden; }
+
+.action {
+  padding: 8px 16px; border: 2px solid var(--accent); border-radius: 6px;
+  background: var(--accent); color: #ffffff; font: inherit; font-weight: 600; cursor: pointer;
+}
+.action:hover { background: #2a74ab; border-color: #2a74ab; }
+/* Secondary button with a visible border (never grey on grey). */
+.outline {
+  padding: 8px 14px; border: 2px solid var(--accent); border-radius: 6px;
+  background: #ffffff; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer;
+}
+.outline:hover { background: #e6f0f7; }
+.plain {
+  width: 28px; height: 28px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--ink-soft); font: inherit; font-size: 18px; line-height: 1; cursor: pointer;
+}
+.plain:hover { background: #e4e7eb; color: var(--ink); }
+
+/* ------------------------------------------------------- Catalogue menu */
+.panel {
+  position: absolute; top: 4px; right: 42px; z-index: 1100;
+  width: min(390px, calc(100% - 50px)); max-height: calc(100% - 8px);
+  display: flex; flex-direction: column;
+  background: var(--panel); color: var(--ink);
+  border: 2px solid var(--line); border-radius: 8px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+.panel[hidden] { display: none; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 14px; }
+
+
+.list { flex: 1; min-height: 0; overflow: auto; padding: 0 8px 8px; }
+.section { margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+
+.row-wrap { display: flex; align-items: center; gap: 2px; border-bottom: 1px solid #e4e7eb; }
+.row { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 4px; cursor: pointer; }
+.row:hover { background: #f0f4f8; }
+.row-text { display: flex; flex-direction: column; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.row-title { font-weight: 600; line-height: 1.3; }
+.row-source { font-size: 12px; color: var(--ink-soft); }
+.row-badge { font-size: 12px; font-weight: 700; color: #8c1d18; }
+
+.thumb { flex: 0 0 56px; width: 56px; height: 56px; border-radius: 6px; background: #cbd2d9; object-fit: cover; }
+.thumb.none { display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--ink-soft); background: #e4e7eb; }
+
+.panel-foot { display: flex; align-items: center; gap: 8px; padding: 8px; border-top: 1px solid #cbd2d9; }
+.panel-foot .spacer { flex: 1; }
+
+/* ----------------------------------------------------------- Map dialog */
+.dialog-back { position: absolute; inset: 0; z-index: 5; background: rgba(31, 41, 51, 0.55); border-radius: 6px; overflow: auto; padding: 10px; }
+.dialog { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #ffffff; color: var(--ink); border-radius: 8px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-weight: 600; }
+.field input[type="text"] {
+  min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
+  background: #ffffff; color: var(--ink); font: inherit;
+}
+.note { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); line-height: 1.45; white-space: normal; overflow-wrap: anywhere; }
+.error { margin: 2px 0 0; color: #8c1d18; font-size: 13px; font-weight: 600; white-space: normal; overflow-wrap: anywhere; }
+.error:empty { display: none; }
+.buttons { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ----------------------------------------------------------------- Sliders */
+/* Zoom slider: a thin vertical bar under the buttons. */
+.zoom-slider { display: flex; padding: 6px 2px; background: #ffffff; border: 2px solid var(--line); border-radius: 6px; }
+.zoom-slider input {
+  height: 120px; width: 16px; margin: 0; padding: 0;
+  writing-mode: vertical-lr; direction: rtl; -webkit-appearance: slider-vertical;
+}
+
+/* Transparency slider: a small bar in the bottom-left corner. */
+.transparency {
+  position: absolute; left: 4px; bottom: 22px; z-index: 1000;
+  display: flex; align-items: center; gap: 6px; padding: 3px 8px;
+  background: #ffffff; color: var(--ink); border: 2px solid var(--line); border-radius: 6px; font-size: 12px;
+}
+.transparency input { width: 80px; margin: 0; }
+.transparency .value { min-width: 2.8em; text-align: right; }
+
+/* ---------------------------------------------------------- Pins and labels */
+.marker-cluster-selected { border: 3px solid #16b378; border-radius: 50%; }
+
+.map-popup { --accent: #43A047; }
+.map-popup .leaflet-popup-content-wrapper { border-left: 4px solid var(--accent); border-radius: 6px; padding: 0; }
+.map-popup .leaflet-popup-tip { background: var(--accent); }
+/* Room on the right of the label for the close cross, which stays inside the label. */
+.map-popup .leaflet-popup-content { margin: 10px 34px 10px 14px; }
+.popup-title { font-weight: 700; font-size: 13px; line-height: 1.3; color: #111111; overflow-wrap: anywhere; }
+/* No white-space rule here: Leaflet measures the label with nowrap to size it. */
+.popup-desc { margin-top: 3px; font-size: 12px; line-height: 1.5; color: #3e4c59; overflow-wrap: anywhere; }
+
+.leaflet-container .map-popup a.leaflet-popup-close-button {
+  /* Leaflet places the cross relative to the whole popup, which starts 10px above the label. */
+  top: 16px; right: 6px; width: 24px; height: 24px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  font: 22px/1 sans-serif; color: #3e4c59; border-radius: 4px;
+}
+.leaflet-container .map-popup a.leaflet-popup-close-button:hover,
+.leaflet-container .map-popup a.leaflet-popup-close-button:focus-visible { background: #e4e7eb; color: #111111; }
+/* With a mouse, the cross appears when the label is hovered; on touch screens it is always shown. */
+@media (hover: hover) {
+  .leaflet-container .map-popup a.leaflet-popup-close-button { opacity: 0; }
+  .leaflet-container .map-popup:hover a.leaflet-popup-close-button,
+  .leaflet-container .map-popup a.leaflet-popup-close-button:focus-visible { opacity: 1; }
+}
+
+/* Catalogue window: the panel fills the whole page. */
+body.catalog-window { background: #ffffff; }
+#catalog-root { height: 100%; }
+.panel.full {
+  position: relative; top: auto; right: auto; width: auto; height: 100%; max-height: none;
+  border: 0; border-radius: 0; box-shadow: none;
+}
