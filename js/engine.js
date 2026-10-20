@@ -27,6 +27,7 @@
       this.entries = new Map();      // row id -> { marker, signature, point }
       this.shapes = new Map();       // row id -> { layer, signature, shape }
       this.shapeOpacity = 0.45;
+      this.editHandler = null;       // set by the drawing mode: receives the clicks on the shapes
       this.selectedId = null;
       this.baseLayer = null;
       this.baseKey = ``;
@@ -67,8 +68,8 @@
       // The accent colour of a label follows the colour of its pin.
       this.map.on(`popupopen`, (event) => {
         const source = event.popup._source;
-        if (!source || source.options.rowId === undefined) return;
-        const id = source.options.rowId;
+        const id = source && source.options.rowId !== undefined ? source.options.rowId : event.popup.options.rowId;
+        if (id === undefined) return;
         const entry = this.entries.get(id) || this.shapes.get(id);
         const element = event.popup.getElement();
         const color = entry && (entry.point || entry.shape).color;
@@ -229,6 +230,7 @@
         }
       }
       if (reorder) this._orderShapes();
+      if (this.handlers.onShapesChanged) this.handlers.onShapesChanged();
     }
 
     _shapeStyle(shape, selected) {
@@ -243,22 +245,47 @@
 
     _makeShape(shape) {
       const layer = L.polygon(shape.polygons, {
+        smoothFactor: 0.4,
         ...this._shapeStyle(shape, shape.id === this.selectedId),
         renderer: this.renderer, rowId: shape.id, bubblingMouseEvents: false
       });
-      layer.on(`click`, () => {
+      layer.on(`click`, (event) => {
+        // In drawing mode the clicks belong to the editor.
+        if (this.editHandler) {
+          this.editHandler.shapeClick(shape.id, event);
+          return;
+        }
         this.select(shape.id, { pan: false });
         if (this.handlers.onSelect) this.handlers.onSelect(shape.id);
+        this._showShapePopup(shape.id, event.latlng);
       });
-      // The label is built only when it opens, as for the pins.
-      layer.bindPopup(() => this._popupContent(shape.id), { className: `map-popup` });
+      layer.on(`mousedown`, (event) => {
+        if (this.editHandler) this.editHandler.shapeDown(shape.id, event);
+      });
       return layer;
+    }
+
+    // The label of a shape, opened at a position. It is built only when it opens, as for the pins.
+    _showShapePopup(id, latlng) {
+      if (!this.shapes.has(id)) return;
+      L.popup({ className: `map-popup`, rowId: id })
+        .setLatLng(latlng)
+        .setContent(this._popupContent(id))
+        .openOn(this.map);
     }
 
     // Draws the large shapes first (below) and the small ones last (above).
     _orderShapes() {
       const sorted = [...this.shapes.values()].sort((a, b) => b.shape.size - a.shape.size);
       for (const entry of sorted) entry.layer.bringToFront();
+    }
+
+    // Shows a shape at another place or form while it is being edited, before the table has it.
+    previewShape(id, polygons) {
+      const entry = this.shapes.get(id);
+      if (!entry) return;
+      entry.layer.setLatLngs(polygons);
+      entry.shape = { ...entry.shape, polygons };
     }
 
     // Transparency of the fill of all the shapes (0 to 1 of opacity); the border stays solid.
@@ -376,7 +403,7 @@
       // The zoom chosen by the user is kept: the map is only centred on the row.
       this.map.panTo(position);
       if (!current.marker) {
-        current.layer.openPopup(position);
+        if (!this.editHandler) this._showShapePopup(id, position);
         return;
       }
       // A pin hidden inside a cluster is only centred (its cluster is highlighted); its label

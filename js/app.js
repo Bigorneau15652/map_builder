@@ -4,7 +4,15 @@
   const { t } = window.mapBuilderI18n;
   const catalog = window.mapBuilderCatalog;
   const { normalizeConfig } = window.mapBuilderConfig;
-  const { CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK } = window.mapBuilderMenu;
+  const {
+    CatalogMenu, TransparencyControl, h, icon, ICON_EXPAND, ICON_DOCK, ICON_EDIT, ICON_SELECT, ICON_RECTANGLE,
+    ICON_ELLIPSE, ICON_POLYGON, ICON_ERASE, ICON_SNAP, ICON_UNDO, ICON_DONE
+  } = window.mapBuilderMenu;
+  const TOOL_BUTTONS = [
+    [`select`, ICON_SELECT, `toolSelect`], [`rectangle`, ICON_RECTANGLE, `toolRectangle`], [`ellipse`, ICON_ELLIPSE, `toolEllipse`],
+    [`polygon`, ICON_POLYGON, `toolPolygon`], [`erase`, ICON_ERASE, `toolErase`]
+  ];
+  const TOAST_MS = 7000;
 
   // Below this size of the map area, the catalogue opens in a separate window.
   const SMALL_STAGE_HEIGHT = 560;
@@ -17,6 +25,8 @@
   class MapApp {
     // host.onConfig(patch): a setting changed. host.onSelect(id): a pin was clicked.
     // host.onWindowButton(): the expand (Grist) or dock (window) button was clicked.
+    // host.store (optional, Grist widget only): { canEdit(), create, update, remove } to write the
+    // shapes drawn on the map to the table; without it there is no drawing mode.
     constructor(host, mode) {
       this.host = host;
       this.mode = mode;
@@ -34,7 +44,8 @@
       this.engine = new window.MapEngine(document.getElementById(`map`), {
         onSelect: (id) => { this.wanted = { id, pending: false }; host.onSelect(id); },
         onViewChange: (view) => { if (host.onViewChange) host.onViewChange(view); },
-        onZoom: (zoom) => { this.zoomInput.value = String(zoom); }
+        onZoom: (zoom) => { this.zoomInput.value = String(zoom); },
+        onShapesChanged: () => { if (this.editor) this.editor.refresh(); }
       });
       // In a small widget the catalogue opens in its own window; otherwise it opens in place.
       this.menu = new CatalogMenu(() => this.config, (patch) => this.change(patch), {
@@ -58,7 +69,9 @@
         onclick: () => host.onWindowButton()
       }, icon(mode === `window` ? ICON_DOCK : ICON_EXPAND));
       this.tools = tools;
-      tools.append(this.menu.button, windowButton);
+      tools.append(this.menu.button);
+      if (mode === `grist` && host.store) this.setupEditing(stage, tools);
+      tools.append(windowButton);
 
       // Vertical zoom slider under the buttons.
       this.zoomInput = h(`input`, {
@@ -67,9 +80,92 @@
       });
       this.zoomInput.addEventListener(`input`, () => this.engine.setZoom(Number(this.zoomInput.value)));
       tools.append(h(`div`, { class: `zoom-slider` }, this.zoomInput));
-      stage.append(this.menu.panel, this.slider.element);
+      stage.append(this.menu.panel, this.slider.element, this.toastElement());
       this.watchActivity(stage);
       this.applyConfig();
+    }
+
+    // ------------------------------------------------------------ Drawing mode
+
+    // The button that starts the drawing mode, its toolbar and its help line.
+    setupEditing(stage, tools) {
+      this.editor = new window.mapBuilderEditor.ShapeEditor(this.engine, this.host.store, {
+        onTool: (tool) => this.renderEditBar(tool),
+        onHint: (text) => { this.hint.textContent = text; this.hint.hidden = !text; },
+        onMessage: (text) => this.toast(text),
+        askName: (defaultName) => this.askName(defaultName),
+        selectRow: (id) => this.host.onSelect(id)
+      });
+      this.editButton = h(`button`, {
+        type: `button`, class: `tool`, title: t(`editMode`), [`aria-label`]: t(`editMode`), [`aria-pressed`]: `false`,
+        onclick: () => this.toggleEditing()
+      }, icon(ICON_EDIT));
+      tools.append(this.editButton);
+      this.editBar = h(`div`, { id: `edit-bar`, role: `toolbar`, [`aria-label`]: t(`editMode`), hidden: true });
+      this.hint = h(`p`, { id: `edit-hint`, role: `status`, hidden: true });
+      stage.append(this.editBar, this.hint);
+    }
+
+    toggleEditing(force) {
+      const on = force === undefined ? !this.editor.active : force;
+      if (on && !this.host.store.canEdit()) {
+        this.toast(t(`editNeedsShape`));
+        return;
+      }
+      this.menu.toggle(false);
+      this.editor.setActive(on);
+      this.editButton.setAttribute(`aria-pressed`, String(on));
+      this.editBar.hidden = !on;
+      if (!on) this.hint.hidden = true;
+    }
+
+    renderEditBar(tool) {
+      if (!this.editBar) return;
+      const button = (key, paths, pressed, onclick, disabled) => h(`button`, {
+        type: `button`, class: `tool`, title: t(key), [`aria-label`]: t(key),
+        [`aria-pressed`]: pressed === null ? null : String(pressed), disabled, onclick
+      }, icon(paths));
+      this.editBar.textContent = ``;
+      this.editBar.append(
+        ...TOOL_BUTTONS.map(([id, paths, key]) => button(key, paths, tool === id, () => this.editor.setTool(id), false)),
+        h(`span`, { class: `bar-gap`, [`aria-hidden`]: `true` }),
+        button(`toolSnap`, ICON_SNAP, this.editor.snap, () => { this.editor.toggleSnap(); this.renderEditBar(tool); }, false),
+        button(`toolUndo`, ICON_UNDO, null, () => this.editor.undo(), !this.editor.canUndo),
+        button(`toolDone`, ICON_DONE, null, () => this.toggleEditing(false), false)
+      );
+    }
+
+    // A short message at the bottom of the map (a refused write, an erased shape...).
+    toastElement() {
+      this.toastNode = h(`p`, { id: `toast`, role: `status`, hidden: true });
+      return this.toastNode;
+    }
+
+    toast(text) {
+      this.toastNode.textContent = text;
+      this.toastNode.hidden = !text;
+      clearTimeout(this.toastTimer);
+      if (text) this.toastTimer = setTimeout(() => { this.toastNode.hidden = true; }, TOAST_MS);
+    }
+
+    // Small dialog asking the name of a new shape. Resolves to the name, or null when cancelled.
+    askName(defaultName) {
+      return new Promise((resolve) => {
+        const input = h(`input`, { type: `text`, id: `f-shape-name`, maxlength: 80, autocomplete: `off`, value: defaultName });
+        const close = (value) => { dialog.remove(); resolve(value); };
+        const submit = () => close(input.value.trim() || defaultName);
+        const dialog = h(`div`, { class: `dialog-back`, onclick: (event) => { if (event.target === dialog) close(null); } },
+          h(`form`, { class: `dialog`, role: `dialog`, [`aria-label`]: t(`shapeNameTitle`), onsubmit: (event) => { event.preventDefault(); submit(); } },
+            h(`strong`, { text: t(`shapeNameTitle`) }),
+            h(`div`, { class: `field` }, h(`label`, { for: `f-shape-name`, text: t(`shapeNameField`) }), input),
+            h(`div`, { class: `buttons` },
+              h(`button`, { type: `button`, class: `outline`, text: t(`cancel`), onclick: () => close(null) }),
+              h(`button`, { type: `submit`, class: `action`, text: t(`ok`) }))));
+        dialog.addEventListener(`keydown`, (event) => { if (event.key === `Escape`) { event.stopPropagation(); close(null); } });
+        this.stage.append(dialog);
+        input.focus();
+        input.select();
+      });
     }
 
     // Hides the buttons and sliders after a few seconds without movement over the map, and
@@ -162,10 +258,12 @@
       this.wanted = { id, pending: false };
       if (id === null || id === undefined) {
         this.engine.clearSelection();
+        if (this.editor && this.editor.active) this.editor.selectShape(null, false);
         return;
       }
       this.engine.select(id, { pan });
-      if (pan && !this.engine.entries.has(id)) this.wanted = { id, pending: true };
+      if (this.editor && this.editor.active) this.editor.selectShape(id, false);
+      if (pan && !this.engine.entries.has(id) && !this.engine.shapes.has(id)) this.wanted = { id, pending: true };
     }
 
     // Replaces the map by a message (no data, missing columns, map in another window).
@@ -185,6 +283,7 @@
       this.docked = docked;
       this.tools.hidden = docked;
       if (docked) {
+        if (this.editor) this.toggleEditing(false);
         this.preview(null);
         this.menu.toggle(false);
         this.showMessage(t(`dockedMessage`), true);

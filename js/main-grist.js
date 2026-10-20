@@ -90,7 +90,31 @@
     if (grist.setCursorPos) grist.setCursorPos({ rowId: id }).catch(() => {});
   }
 
+  // ------------------------------------------------ Writing the shapes to the table
+
+  // Where the widget writes: only the table of this widget, only the mapped columns.
+  let currentMapping = null;
+  const store = {
+    canEdit: () => Boolean(currentMapping && currentMapping.Shape),
+    async create({ name, shape, color, description }) {
+      const fields = {};
+      const set = (key, value) => {
+        if (value !== undefined && currentMapping && currentMapping[key]) fields[currentMapping[key]] = value;
+      };
+      set(`Name`, name);
+      set(`Shape`, shape);
+      set(`Color`, color);
+      set(`Description`, description);
+      const created = await grist.selectedTable.create({ fields });
+      const first = Array.isArray(created) ? created[0] : created;
+      return first && typeof first === `object` ? first.id : first;
+    },
+    update: (id, shape) => grist.selectedTable.update({ id, fields: { [currentMapping.Shape]: shape } }),
+    remove: (id) => grist.selectedTable.destroy(id)
+  };
+
   const app = new window.MapApp({
+    store,
     onConfig: (patch) => {
       shared.config = { ...app.config };
       // Each setting is saved as its own widget option.
@@ -118,7 +142,7 @@
 
   const optional = true;
   grist.ready({
-    requiredAccess: `read table`,
+    requiredAccess: `full`,
     columns: [
       `Name`,
       { name: `Shape`, title: t(`columnShape`), type: `Text`, optional },
@@ -139,6 +163,7 @@
 
   grist.onRecords(async (rows, mapping) => {
     await loadViewOnce();
+    currentMapping = mapping;
     const mapped = grist.mapColumnNames(rows);
     // The table needs a name column and either a shape column or both coordinate columns.
     const usable = mapped && (mapping.Shape || (mapping.Latitude && mapping.Longitude));

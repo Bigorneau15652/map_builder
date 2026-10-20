@@ -60,7 +60,29 @@
       errUrlPlaceholders: `L'adresse doit contenir {z}, {x} et {y}.`,
       errUrlOther: `L'adresse contient un marqueur non pris en charge : {name}.`,
       errKeyMissing: `Cette carte nécessite une clé API : saisissez-la dans le champ Clé API.`,
-      errKeyUnused: `Une clé est saisie mais l'adresse ne contient pas {apikey} : ajoutez-le à l'endroit de la clé.`
+      errKeyUnused: `Une clé est saisie mais l'adresse ne contient pas {apikey} : ajoutez-le à l'endroit de la clé.`,
+      // Drawing mode
+      editMode: `Modifier les formes`,
+      editNeedsShape: `Associez la colonne Shape dans le panneau de droite pour dessiner des formes.`,
+      toolSelect: `Sélection et retouche`,
+      toolRectangle: `Rectangle`,
+      toolEllipse: `Ovale`,
+      toolPolygon: `Forme libre`,
+      toolErase: `Gomme`,
+      toolSnap: `Accrochage aux sommets des formes voisines (Alt pour l'ignorer un instant)`,
+      toolUndo: `Annuler la dernière action`,
+      toolDone: `Quitter le mode dessin`,
+      hint_select: `Cliquez une forme pour la retoucher : tirez un point pour le déplacer, tirez le milieu d'un trait pour ajouter un point, double-clic sur un point pour le retirer. Tirez la forme pour la déplacer. Espace + glisser : déplacer la carte.`,
+      hint_rectangle: `Rectangle : glissez sur la carte (Maj : carré). Espace + glisser : déplacer la carte.`,
+      hint_ellipse: `Ovale : glissez sur la carte (Maj : cercle). Espace + glisser : déplacer la carte.`,
+      hint_polygon: `Forme libre : cliquez pour poser chaque point, puis cliquez sur le premier point, double-cliquez ou appuyez sur Entrée pour fermer la forme. Retour arrière : retirer le dernier point. Échap : annuler.`,
+      hint_erase: `Gomme : cliquez une forme pour la supprimer. Annuler la dernière action la rétablit.`,
+      shapeNameTitle: `Nouvelle forme`,
+      shapeNameField: `Nom de la forme`,
+      defaultShapeName: `Forme {number}`,
+      shapeErased: `Forme « {name} » supprimée. Le bouton Annuler la rétablit (seules les colonnes associées au widget sont restituées).`,
+      writeFailed: `Le tableau n'a pas pu être modifié : {error}`,
+      tooManyPoints: `Cette forme a {count} points : trop pour les retoucher un par un. Vous pouvez la déplacer ou la supprimer.`
     },
     en: {
       columnLongitude: `Longitude`,
@@ -116,7 +138,29 @@
       errUrlPlaceholders: `The address must contain {z}, {x} and {y}.`,
       errUrlOther: `The address contains an unsupported marker: {name}.`,
       errKeyMissing: `This map needs an API key: enter it in the API key field.`,
-      errKeyUnused: `A key is entered but the address has no {apikey}: add it where the key goes.`
+      errKeyUnused: `A key is entered but the address has no {apikey}: add it where the key goes.`,
+      // Drawing mode
+      editMode: `Edit shapes`,
+      editNeedsShape: `Map the Shape column in the right-hand panel to draw shapes.`,
+      toolSelect: `Select and reshape`,
+      toolRectangle: `Rectangle`,
+      toolEllipse: `Oval`,
+      toolPolygon: `Free shape`,
+      toolErase: `Eraser`,
+      toolSnap: `Snap to the corners of neighbouring shapes (hold Alt to ignore it for a moment)`,
+      toolUndo: `Undo the last action`,
+      toolDone: `Leave the drawing mode`,
+      hint_select: `Click a shape to reshape it: drag a point to move it, drag the middle of a side to add a point, double-click a point to remove it. Drag the shape to move it. Space + drag: move the map.`,
+      hint_rectangle: `Rectangle: drag on the map (Shift: square). Space + drag: move the map.`,
+      hint_ellipse: `Oval: drag on the map (Shift: circle). Space + drag: move the map.`,
+      hint_polygon: `Free shape: click to place each point, then click the first point, double-click or press Enter to close the shape. Backspace: remove the last point. Esc: cancel.`,
+      hint_erase: `Eraser: click a shape to delete it. Undoing the last action brings it back.`,
+      shapeNameTitle: `New shape`,
+      shapeNameField: `Name of the shape`,
+      defaultShapeName: `Shape {number}`,
+      shapeErased: `Shape "{name}" deleted. The Undo button brings it back (only the columns mapped to the widget are restored).`,
+      writeFailed: `The table could not be changed: {error}`,
+      tooManyPoints: `This shape has {count} points: too many to reshape one by one. You can still move or delete it.`
     }
   };
 

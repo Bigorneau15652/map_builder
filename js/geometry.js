@@ -116,5 +116,20 @@
     return total;
   }
 
-  window.mapBuilderGeometry = { parseShape, sizeOf };
+  // Six decimals are about ten centimetres: enough for a building, and short in the cell.
+  function round(value) {
+    return Math.round(value * 1e6) / 1e6;
+  }
+
+  // Writes the text of a shape: the opposite of parseShape (the outlines are closed again).
+  function serializeShape(kind, polygons) {
+    const close = (ring) => [...ring.map(([lat, lng]) => [round(lng), round(lat)]), [round(ring[0][1]), round(ring[0][0])]];
+    const rings = (polygon) => polygon.map(close);
+    const geometry = polygons.length === 1
+      ? { type: `Polygon`, coordinates: rings(polygons[0]) }
+      : { type: `MultiPolygon`, coordinates: polygons.map(rings) };
+    return JSON.stringify({ type: `Feature`, properties: { kind }, geometry });
+  }
+
+  window.mapBuilderGeometry = { parseShape, serializeShape, sizeOf, round };
 })();

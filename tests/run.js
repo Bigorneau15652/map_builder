@@ -1,13 +1,7 @@
 // End-to-end checks in a headless browser, with a mocked Grist. Usage:
 //   cd <repository> && python3 -m http.server 8765 &   then   node tests/run.js
 // Playwright must be installed (set PLAYWRIGHT_PATH when it is not found).
-const fs = require(`fs`);
-const path = require(`path`);
-const { chromium } = require(process.env.PLAYWRIGHT_PATH || `playwright`);
-
-const BASE = process.env.BASE_URL || `http://localhost:8765`;
-const OUT = process.env.OUT_DIR || `/tmp`;
-const mock = fs.readFileSync(path.join(__dirname, `mock-grist.js`), `utf8`);
+const { BASE, OUT, chromium, open, path } = require(`./helpers`);
 
 const feature = (kind, rings) => JSON.stringify({ type: `Feature`, properties: { kind }, geometry: { type: `Polygon`, coordinates: rings } });
 const box = (s, w, n, e) => [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
@@ -22,28 +16,13 @@ const ROWS = [
   { id: 6, Name: `Anneau`, Shape: JSON.stringify({ type: `Polygon`, coordinates: [box(43.590, 3.840, 43.598, 3.850)[0], [[3.842, 43.592], [3.842, 43.596], [3.848, 43.596], [3.848, 43.592], [3.842, 43.592]]] }), Color: `#7B1FA2` }
 ];
 
-async function open(browser, url, extra = {}) {
-  const page = await browser.newPage({ viewport: { width: 1000, height: 700 }, ...extra });
-  const errors = [];
-  page.on(`pageerror`, (e) => errors.push(String(e)));
-  page.on(`dialog`, (d) => { errors.push(`dialog: ${d.message()}`); d.dismiss(); });
-  await page.route(`**/*`, (route) => {
-    const u = route.request().url();
-    if (u.endsWith(`grist-plugin-api.js`)) return route.fulfill({ contentType: `text/javascript`, body: mock });
-    if (u.startsWith(BASE)) return route.continue();
-    return route.abort();
-  });
-  await page.goto(url);
-  return { page, errors };
-}
-
 (async () => {
   const browser = await chromium.launch();
   const failures = [];
   const check = (name, ok, detail) => { console.log(`${ok ? `ok  ` : `FAIL`} ${name}${ok ? `` : ` -> ${detail}`}`); if (!ok) failures.push(name); };
 
   const { page, errors } = await open(browser, `${BASE}/index.html`);
-  await page.evaluate(({ rows, mapping }) => window.__grist.pushRecords(rows, mapping), { rows: ROWS, mapping: MAPPING });
+  await page.evaluate(({ rows, mapping }) => window.__grist.load(rows, mapping), { rows: ROWS, mapping: MAPPING });
   await page.waitForTimeout(800);
   const banner = await page.textContent(`#banner`);
   check(`shape banner names the column and an example`, /Shape/.test(banner) && /Forme cassee/.test(banner), banner);
@@ -83,13 +62,13 @@ async function open(browser, url, extra = {}) {
 
   // Without shape or coordinates mapped, a clear message is shown.
   const second = await open(browser, `${BASE}/index.html`);
-  await second.page.evaluate((rows) => window.__grist.pushRecords(rows, { Name: `Name` }), ROWS);
+  await second.page.evaluate((rows) => window.__grist.load(rows, { Name: `Name` }), ROWS);
   await second.page.waitForTimeout(300);
   check(`missing columns message`, /Shape/.test(await second.page.textContent(`#docked`)));
 
   // Narrow panel and dark colour scheme.
   const narrow = await open(browser, `${BASE}/index.html`, { viewport: { width: 340, height: 520 }, colorScheme: `dark` });
-  await narrow.page.evaluate(({ rows, mapping }) => window.__grist.pushRecords(rows, mapping), { rows: ROWS, mapping: MAPPING });
+  await narrow.page.evaluate(({ rows, mapping }) => window.__grist.load(rows, mapping), { rows: ROWS, mapping: MAPPING });
   await narrow.page.waitForTimeout(800);
   const bannerBox = await narrow.page.locator(`#banner`).boundingBox();
   check(`banner readable at 340 px`, bannerBox && bannerBox.width > 300 && bannerBox.height > 20);
@@ -106,11 +85,11 @@ async function open(browser, url, extra = {}) {
       rows.push({ id: i + 1, Name: `S${i}`, Shape: JSON.stringify({ type: `Polygon`, coordinates: [ring] }), Color: `#3388CC` });
     }
     const start = performance.now();
-    await window.__grist.pushRecords(rows, mapping);
+    await window.__grist.load(rows, mapping);
     const first = performance.now() - start;
     rows[10].Color = `#FF0000`;
     const again = performance.now();
-    await window.__grist.pushRecords(rows, mapping);
+    await window.__grist.load(rows, mapping);
     return { first: Math.round(first), edit: Math.round(performance.now() - again) };
   }, MAPPING);
   console.log(`3000 shapes: first load ${timing.first} ms, one edit ${timing.edit} ms`);

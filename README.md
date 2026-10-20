@@ -6,11 +6,12 @@ English first, version française plus bas.
 
 A light geographic information system for [Grist](https://www.getgrist.com): shapes (rectangles, ovals, free outlines) and pins stored in a Grist table and drawn over a base map. One row of the table is one object. Colours, filters, links with other widgets and sharing are handled by Grist itself, so a Grist document can hold departments, regions or the buildings of a campus and be reused by everybody. It is built from the [map_view](https://github.com/Bigorneau15652/map_view) widget.
 
-Status: work in progress. Reading and display of shapes and pins are done. The drawing mode (create, edit and erase shapes in the widget) and the import of department and region outlines are the next steps.
+Status: work in progress. Reading, display and the drawing mode are done. The import of department and region outlines is the next step.
 
 ### Features
 
 - One object per row: a shape (a GeoJSON polygon stored in the Shape column), a pin (Latitude and Longitude columns) or both.
+- A drawing mode (pencil button at the top right) to create, reshape, move and erase shapes on the map. Each shape drawn becomes a row of the table, and each change is written to it.
 - The fill colour comes from a Color column (HEX code such as `#4A90D9`). The border is the same colour, darker.
 - A label (name and description) shows when the row is selected or the shape is clicked. Labels are plain text.
 - Two-way selection: selecting a row centres the map on it, clicking a shape or a pin selects the row in Grist. The zoom chosen by the user is never changed: if the next shape is larger, zoom out yourself.
@@ -21,6 +22,21 @@ Status: work in progress. Reading and display of shapes and pins are done. The d
 - The buttons and sliders fade after three seconds without movement over the map. The view (centre and zoom) is kept in the browser of each user.
 - The map can be opened in a separate window, for example on a second screen.
 - Interface in French and English, chosen from the browser language.
+
+### Drawing mode
+
+The pencil button opens a toolbar on the left of the map. The tools are: select and reshape, rectangle, oval, free shape, eraser, snapping, undo and leave. A line at the top of the map explains the active tool.
+
+- Rectangle and oval: drag on the map. Hold Shift for a square or a circle.
+- Free shape: click each point, then click the first point, double-click or press Enter to close the shape. Backspace removes the last point, Esc cancels.
+- Reshape: select a shape (click it, or select its row). Drag a round handle to move a point, drag the small handle in the middle of a side to add a point, double-click a point to remove it. A rectangle or an oval keeps its eight handles and its kind. Drag the shape itself to move it.
+- Eraser: click a shape to delete its row. Delete also erases the selected shape.
+- Space bar held down, then drag: move the map while a tool is active. The mouse wheel zooms as usual.
+- Snapping: the cursor is attracted by the corners of neighbouring shapes, so two buildings that touch share their corner. The shapes stay independent rows. Hold Alt to ignore snapping for a moment.
+- Undo: the button (or Ctrl+Z while the widget has the focus) undoes the last 20 actions. After an erase, only the columns mapped to the widget are restored; the Undo button of Grist restores everything.
+- A new shape asks for its name, gets the colour `#4A90D9` and is written as a new row. Change its colour in the table.
+
+The drawing mode needs write access: the widget asks for the access level "Full". It only uses the table it is attached to. If the table is linked to another widget ("Select by"), a new row does not get the link value: set it in the table.
 
 ### Columns
 
@@ -40,7 +56,7 @@ Limits, to keep the widget fast and safe: 2 million characters per cell, 50 000 
 
 1. Publish this repository with GitHub Pages: Settings, Pages, Source "Deploy from a branch", branch `main`, folder `/ (root)`.
 2. The widget address is `https://YOUR-ACCOUNT.github.io/map_builder/index.html`.
-3. In Grist, add a page with a custom widget, paste that address and give it read access to the table ("Read table").
+3. In Grist, add a page with a custom widget, paste that address and give it full access ("Full"): it is needed to write the shapes you draw.
 4. In the right-hand panel, under the access level, map the columns.
 
 If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index.html`: the `src` of the `grist-plugin-api.js` script and the host named in the Content-Security-Policy line above it (for the public service use `https://docs.getgrist.com`).
@@ -48,21 +64,21 @@ If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index
 ### Security and privacy
 
 - No external script except the Grist plugin API, loaded from your own Grist server. Leaflet and its clustering plugin are in `vendor`. A Content-Security-Policy limits scripts to this site and images to https.
-- The data of the table is never sent anywhere. Each map provider sees the IP address of the users, the displayed area and the site that shows the map. Shapes are never downloaded from anywhere: they come from the table.
+- The widget only reads and writes the table it is attached to, and only the mapped columns. The data of the table is never sent anywhere. Each map provider sees the IP address of the users, the displayed area and the site that shows the map. Shapes are never downloaded from anywhere: they come from the table.
 - Labels and names are written as text, never as HTML. The text of the Shape column is checked (types, ranges, sizes) before drawing.
 - Messages between the widget and the separate windows are accepted only from the same site and from the window the widget opened, and the settings they carry are checked before use.
 
 ### Tests
 
-`tests/run.js` runs the widget in a headless browser with a mocked Grist (`tests/mock-grist.js`): reading and drawing of shapes, selection and zoom, banners, narrow panel in dark mode, and 3 000 shapes. See the first lines of the file for the command.
+`tests/run.js` and `tests/edit.js` run the widget in a headless browser with a mocked Grist (`tests/mock-grist.js`): reading and drawing of shapes, selection and zoom, banners, narrow panel in dark mode, 3 000 shapes, and the whole drawing mode (rectangle, oval, free shape, reshaping, moving, eraser, undo, snapping, refused writes). See the first lines of `tests/run.js` for the command.
 
 ### Files
 
 - `index.html`, `js/main-grist.js`: the widget. `window.html`, `js/main-window.js`: the separate map window. `catalog.html`, `js/main-catalog.js`: the catalogue window.
-- `js/app.js`: the map screen. `js/engine.js`: the map, the shapes and the pins. `js/geometry.js`: reading of the Shape column. `js/records.js`: reading and checking of the rows. `js/menu.js`: catalogue, "Other" dialog, transparency slider. `js/catalog.js`: maps. `js/config.js`: saved settings. `js/colors.js`, `js/i18n.js`, `js/window-link.js`.
+- `js/app.js`: the map screen. `js/engine.js`: the map, the shapes and the pins. `js/editor.js`: the drawing mode. `js/geometry.js`: reading of the Shape column. `js/records.js`: reading and checking of the rows. `js/menu.js`: catalogue, "Other" dialog, transparency slider. `js/catalog.js`: maps. `js/config.js`: saved settings. `js/colors.js`, `js/i18n.js`, `js/window-link.js`.
 - `data/ign-layers.js`: the IGN layers. `vendor`: Leaflet and Leaflet.markercluster.
 
-Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.1.0`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
+Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.2.0`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
 
 Licence: MIT. Leaflet is under the BSD 2-Clause licence and Leaflet.markercluster under the MIT licence.
 
@@ -70,11 +86,12 @@ Licence: MIT. Leaflet is under the BSD 2-Clause licence and Leaflet.markercluste
 
 Un système d'information géographique léger pour [Grist](https://www.getgrist.com) : des formes (rectangles, ovales, contours libres) et des épingles stockées dans un tableau Grist et dessinées sur un fond de carte. Une ligne du tableau est un objet. Les couleurs, les filtres, les liens avec d'autres widgets et le partage sont gérés par Grist lui-même, si bien qu'un document Grist peut contenir des départements, des régions ou les bâtiments d'un campus et être réutilisé par tous. Il est construit à partir du widget [map_view](https://github.com/Bigorneau15652/map_view).
 
-État : en cours de réalisation. La lecture et l'affichage des formes et des épingles sont faits. Le mode dessin (créer, modifier et effacer des formes dans le widget) et l'import des contours des départements et des régions sont les prochaines étapes.
+État : en cours de réalisation. La lecture, l'affichage et le mode dessin sont faits. L'import des contours des départements et des régions est la prochaine étape.
 
 ### Fonctions
 
 - Un objet par ligne : une forme (un polygone GeoJSON dans la colonne Shape), une épingle (colonnes Latitude et Longitude) ou les deux.
+- Un mode dessin (bouton crayon en haut à droite) pour créer, retoucher, déplacer et effacer des formes sur la carte. Chaque forme dessinée devient une ligne du tableau, et chaque modification y est écrite.
 - La couleur de remplissage vient d'une colonne Color (code HEX comme `#4A90D9`). La bordure est de la même couleur, plus foncée.
 - Une étiquette (nom et description) s'affiche à la sélection de la ligne ou au clic sur la forme. Les étiquettes sont du texte simple.
 - Sélection dans les deux sens : sélectionner une ligne centre la carte dessus, cliquer une forme ou une épingle sélectionne la ligne dans Grist. Le zoom choisi par l'utilisateur n'est jamais modifié : si la forme suivante est plus grande, il suffit de dézoomer.
@@ -85,6 +102,21 @@ Un système d'information géographique léger pour [Grist](https://www.getgrist
 - Les boutons et les réglettes s'effacent après trois secondes sans mouvement sur la carte. La vue (position et zoom) est conservée dans le navigateur de chaque utilisateur.
 - La carte peut s'ouvrir dans une fenêtre séparée, par exemple sur un second écran.
 - Interface en français et en anglais, selon la langue du navigateur.
+
+### Mode dessin
+
+Le bouton crayon ouvre une barre d'outils à gauche de la carte. Les outils sont : sélection et retouche, rectangle, ovale, forme libre, gomme, accrochage, annuler et quitter. Une ligne en haut de la carte explique l'outil actif.
+
+- Rectangle et ovale : glissez sur la carte. Maintenez Maj pour un carré ou un cercle.
+- Forme libre : cliquez chaque point, puis cliquez sur le premier point, double-cliquez ou appuyez sur Entrée pour fermer la forme. Retour arrière retire le dernier point, Échap annule.
+- Retouche : sélectionnez une forme (cliquez-la, ou sélectionnez sa ligne). Tirez une poignée ronde pour déplacer un point, tirez la petite poignée au milieu d'un côté pour ajouter un point, double-cliquez un point pour le retirer. Un rectangle ou un ovale garde ses huit poignées et son type. Tirez la forme elle-même pour la déplacer.
+- Gomme : cliquez une forme pour supprimer sa ligne. La touche Suppr efface aussi la forme sélectionnée.
+- Barre espace maintenue, puis glisser : déplace la carte pendant qu'un outil est actif. La molette zoome comme d'habitude.
+- Accrochage : le curseur est attiré par les sommets des formes voisines, si bien que deux bâtiments qui se touchent partagent leur sommet. Les formes restent des lignes indépendantes. Maintenez Alt pour ignorer l'accrochage un instant.
+- Annuler : le bouton (ou Ctrl+Z quand le widget a le focus) annule les 20 dernières actions. Après une suppression, seules les colonnes associées au widget sont restituées ; le bouton Annuler de Grist restitue tout.
+- Une nouvelle forme demande son nom, reçoit la couleur `#4A90D9` et est écrite comme une nouvelle ligne. Changez sa couleur dans le tableau.
+
+Le mode dessin demande l'accès en écriture : le widget demande le niveau d'accès « Complet ». Il n'utilise que le tableau auquel il est rattaché. Si le tableau est lié à un autre widget (« Sélectionner par »), une nouvelle ligne ne reçoit pas la valeur du lien : renseignez-la dans le tableau.
 
 ### Colonnes
 
@@ -104,21 +136,21 @@ Limites, pour que le widget reste rapide et sûr : 2 millions de caractères par
 
 1. Sur GitHub, ouvrez le dépôt, puis Settings, puis Pages. Sous Source, choisissez « Deploy from a branch », la branche `main` et le dossier `/ (root)`, puis cliquez sur Save. Attendez une à deux minutes.
 2. L'adresse du widget est `https://VOTRE-COMPTE.github.io/map_builder/index.html`.
-3. Dans Grist : Ajouter, puis Ajouter une page, puis choisissez Personnalisée. Collez l'adresse du widget et donnez-lui l'accès en lecture à la table (« Lire la table »).
+3. Dans Grist : Ajouter, puis Ajouter une page, puis choisissez Personnalisée. Collez l'adresse du widget et donnez-lui l'accès complet (« Complet ») : il est nécessaire pour écrire les formes que vous dessinez.
 4. Dans le panneau de droite, sous le niveau d'accès, associez les colonnes.
 
 Si votre serveur Grist n'est pas `grist.numerique.gouv.fr`, modifiez deux endroits dans `index.html` : l'adresse du script `grist-plugin-api.js` et l'hôte indiqué dans la ligne Content-Security-Policy située au-dessus.
 
 ### Sécurité et confidentialité
 
-Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur Grist. Leaflet et son plugin de regroupement sont dans `vendor`. Une politique de sécurité de contenu limite les scripts à ce site et les images à https. Les données du tableau ne sont jamais envoyées. Chaque fournisseur de carte voit l'adresse IP des utilisateurs, la zone affichée et le site qui affiche la carte. Les formes ne sont jamais téléchargées : elles viennent du tableau. Les étiquettes et les noms sont écrits comme du texte, jamais comme du HTML. Le texte de la colonne Shape est vérifié (types, plages, tailles) avant le dessin. Les messages entre le widget et les fenêtres séparées ne sont acceptés que du même site et de la fenêtre ouverte par le widget, et les réglages qu'ils portent sont vérifiés avant usage.
+Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur Grist. Leaflet et son plugin de regroupement sont dans `vendor`. Une politique de sécurité de contenu limite les scripts à ce site et les images à https. Le widget ne lit et n'écrit que le tableau auquel il est rattaché, et seulement les colonnes associées. Les données du tableau ne sont jamais envoyées. Chaque fournisseur de carte voit l'adresse IP des utilisateurs, la zone affichée et le site qui affiche la carte. Les formes ne sont jamais téléchargées : elles viennent du tableau. Les étiquettes et les noms sont écrits comme du texte, jamais comme du HTML. Le texte de la colonne Shape est vérifié (types, plages, tailles) avant le dessin. Les messages entre le widget et les fenêtres séparées ne sont acceptés que du même site et de la fenêtre ouverte par le widget, et les réglages qu'ils portent sont vérifiés avant usage.
 
 ### Tests
 
-`tests/run.js` lance le widget dans un navigateur sans fenêtre avec un Grist simulé (`tests/mock-grist.js`) : lecture et dessin des formes, sélection et zoom, bandeaux, panneau étroit en mode sombre, et 3 000 formes. La commande est indiquée en tête du fichier.
+`tests/run.js` et `tests/edit.js` lancent le widget dans un navigateur sans fenêtre avec un Grist simulé (`tests/mock-grist.js`) : lecture et dessin des formes, sélection et zoom, bandeaux, panneau étroit en mode sombre, 3 000 formes, et tout le mode dessin (rectangle, ovale, forme libre, retouche, déplacement, gomme, annulation, accrochage, écritures refusées). La commande est indiquée en tête de `tests/run.js`.
 
 ### Publier une modification
 
-Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.1.0` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
+Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.2.0` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
 
 Licence : MIT. Leaflet est sous licence BSD 2-Clause et Leaflet.markercluster sous licence MIT.
