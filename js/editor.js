@@ -716,20 +716,17 @@
 
     // ------------------------------------------------------------- Erase
 
+    // Erasing empties the Shape cell: the row stays in the table (with its name, its colour and
+    // its other columns) and can be drawn again.
     async erase(id) {
       const entry = this.engine.shapes.get(id);
       if (!entry) return;
       const { shape } = entry;
       const text = serializeShape(shape.kind, shape.polygons, shape.rotation);
       await this.run(async () => {
-        await this.store.remove(id);
+        await this.store.update(id, ``);
         if (this.selectedId === id) this.selectedId = null;
-        this.push({
-          undo: async () => {
-            const created = await this.store.create({ name: shape.name, shape: text, color: shape.color || DEFAULT_COLOR, description: shape.description });
-            this.idAlias.set(id, created);
-          }
-        });
+        this.push({ undo: () => this.store.update(this.resolve(id), text) });
         this.hooks.onMessage(t(`shapeErased`, { name: shape.name }));
       });
     }

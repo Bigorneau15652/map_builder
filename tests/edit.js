@@ -136,17 +136,19 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   const newRing = ring((await rows(page)).find((row) => row.Name === `Ovale`));
   check(`dragging a shape moves it`, newRing[0][0] > oldRing[0][0] + 0.0001 && newRing.length === oldRing.length);
 
-  // Eraser and undo.
+  // Eraser and undo: the row stays, only its Shape is emptied.
   await tool(4).click();
   const count = (await rows(page)).length;
-  const victim = await at(...[ring((await rows(page)).find((row) => row.Name === `Cercle`))].map((r) => [(r[0][1] + r[32][1]) / 2, (r[0][0] + r[32][0]) / 2])[0]);
+  const circleRing = ring((await rows(page)).find((row) => row.Name === `Cercle`));
+  const victim = await at((circleRing[0][1] + circleRing[32][1]) / 2, (circleRing[0][0] + circleRing[32][0]) / 2);
   await page.mouse.click(victim.x, victim.y);
   await page.waitForTimeout(400);
-  check(`the eraser deletes a shape`, (await rows(page)).length === count - 1);
+  const erased = (await rows(page)).find((row) => row.Name === `Cercle`);
+  check(`the eraser empties the Shape and keeps the row`, (await rows(page)).length === count && Boolean(erased) && !erased.Shape && erased.Color === `#4A90D9`);
   check(`the erased shape is announced`, /Cercle/.test(await page.locator(`#toast`).textContent()));
   await page.locator(`#edit-bar button`).nth(6).click();
   await page.waitForTimeout(500);
-  check(`undo brings the shape back`, (await rows(page)).length === count && (await rows(page)).some((row) => row.Name === `Cercle`));
+  check(`undo brings the shape back`, Boolean((await rows(page)).find((row) => row.Name === `Cercle`).Shape));
 
   // Snapping: a rectangle started near a corner of the site takes that corner exactly.
   await tool(1).click();
