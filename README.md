@@ -6,7 +6,7 @@ English first, version française plus bas.
 
 A light geographic information system for [Grist](https://www.getgrist.com): shapes (rectangles, ovals, free outlines) and pins stored in a Grist table and drawn over a base map. One row of the table is one object. Colours, filters, links with other widgets and sharing are handled by Grist itself, so a Grist document can hold departments, regions or the buildings of a campus and be reused by everybody. It is built from the [map_view](https://github.com/Bigorneau15652/map_view) widget.
 
-Status: work in progress. Reading, display and the drawing mode are done. The import of department and region outlines is the next step.
+Status: usable. Reading, display, the drawing mode and a ready-made file of the French departments and regions (see [DATA.md](DATA.md)) are done.
 
 ### Features
 
@@ -21,6 +21,7 @@ Status: work in progress. Reading, display and the drawing mode are done. The im
 - A transparency slider for the fill of the shapes, at the bottom left.
 - The buttons and sliders fade after three seconds without movement over the map. The view (centre and zoom) is kept in the browser of each user.
 - The map can be opened in a separate window, for example on a second screen.
+- A ready-made Excel file with the outlines of the French departments and regions, to import in Grist ([DATA.md](DATA.md)).
 - Interface in French and English, chosen from the browser language.
 
 ### Drawing mode
@@ -71,7 +72,7 @@ If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index
 
 ### Tests
 
-`tests/run.js` and `tests/edit.js` run the widget in a headless browser with a mocked Grist (`tests/mock-grist.js`): reading and drawing of shapes, selection and zoom, banners, narrow panel in dark mode, 3 000 shapes, and the whole drawing mode (rectangle, oval, free shape, reshaping, moving, eraser, undo, snapping, refused writes). See the first lines of `tests/run.js` for the command.
+`tests/run.js`, `tests/edit.js` and `tests/admin-data.js` run the widget in a headless browser with a mocked Grist (`tests/mock-grist.js`): reading and drawing of shapes, selection and zoom, banners, narrow panel in dark mode, 3 000 shapes, and the whole drawing mode (rectangle, oval, free shape, reshaping, moving, eraser, undo, snapping, refused writes). See the first lines of `tests/run.js` for the command.
 
 ### Files
 
@@ -87,7 +88,7 @@ Licence: MIT. Leaflet is under the BSD 2-Clause licence and Leaflet.markercluste
 
 Un système d'information géographique léger pour [Grist](https://www.getgrist.com) : des formes (rectangles, ovales, contours libres) et des épingles stockées dans un tableau Grist et dessinées sur un fond de carte. Une ligne du tableau est un objet. Les couleurs, les filtres, les liens avec d'autres widgets et le partage sont gérés par Grist lui-même, si bien qu'un document Grist peut contenir des départements, des régions ou les bâtiments d'un campus et être réutilisé par tous. Il est construit à partir du widget [map_view](https://github.com/Bigorneau15652/map_view).
 
-État : en cours de réalisation. La lecture, l'affichage et le mode dessin sont faits. L'import des contours des départements et des régions est la prochaine étape.
+État : utilisable. La lecture, l'affichage, le mode dessin et un fichier prêt à l'emploi des départements et des régions français (voir [DATA.md](DATA.md)) sont faits.
 
 ### Fonctions
 
@@ -102,6 +103,7 @@ Un système d'information géographique léger pour [Grist](https://www.getgrist
 - Une réglette de transparence du remplissage des formes, en bas à gauche.
 - Les boutons et les réglettes s'effacent après trois secondes sans mouvement sur la carte. La vue (position et zoom) est conservée dans le navigateur de chaque utilisateur.
 - La carte peut s'ouvrir dans une fenêtre séparée, par exemple sur un second écran.
+- Un fichier Excel prêt à l'emploi avec les contours des départements et des régions français, à importer dans Grist ([DATA.md](DATA.md)).
 - Interface en français et en anglais, selon la langue du navigateur.
 
 ### Mode dessin
@@ -149,7 +151,7 @@ Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur G
 
 ### Tests
 
-`tests/run.js` et `tests/edit.js` lancent le widget dans un navigateur sans fenêtre avec un Grist simulé (`tests/mock-grist.js`) : lecture et dessin des formes, sélection et zoom, bandeaux, panneau étroit en mode sombre, 3 000 formes, et tout le mode dessin (rectangle, ovale, forme libre, retouche, déplacement, gomme, annulation, accrochage, écritures refusées). La commande est indiquée en tête de `tests/run.js`.
+`tests/run.js`, `tests/edit.js` et `tests/admin-data.js` lancent le widget dans un navigateur sans fenêtre avec un Grist simulé (`tests/mock-grist.js`) : lecture et dessin des formes, sélection et zoom, bandeaux, panneau étroit en mode sombre, 3 000 formes, et tout le mode dessin (rectangle, ovale, forme libre, retouche, déplacement, gomme, annulation, accrochage, écritures refusées). La commande est indiquée en tête de `tests/run.js`.
 
 ### Publier une modification
 
