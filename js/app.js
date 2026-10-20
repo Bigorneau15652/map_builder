@@ -14,6 +14,8 @@
     [`polygon`, ICON_POLYGON, `toolPolygon`], [`erase`, ICON_ERASE, `toolErase`]
   ];
   const TOAST_MS = 7000;
+  // The row that Grist sends back after a click on the map is recognised for this long.
+  const MAP_SELECTION_MS = 3000;
 
   // Below this size of the map area, the catalogue opens in a separate window.
   const SMALL_STAGE_HEIGHT = 560;
@@ -43,7 +45,7 @@
       const tools = document.getElementById(`tools`);
 
       this.engine = new window.MapEngine(document.getElementById(`map`), {
-        onSelect: (id) => { this.wanted = { id, pending: false }; host.onSelect(id); },
+        onSelect: (id) => this.selectFromMap(id),
         onViewChange: (view) => { if (host.onViewChange) host.onViewChange(view); },
         onZoom: (zoom) => { this.zoomInput.value = String(zoom); },
         onShapesChanged: () => { if (this.editor) this.editor.refresh(); }
@@ -95,7 +97,7 @@
         onHint: (text) => { this.hint.textContent = text; this.hint.hidden = !text; },
         onMessage: (text) => this.toast(text),
         askName: (defaultName) => this.askName(defaultName),
-        selectRow: (id) => this.host.onSelect(id)
+        selectRow: (id) => this.selectFromMap(id)
       });
       this.editButton = h(`button`, {
         type: `button`, class: `tool`, title: t(`editMode`), [`aria-label`]: t(`editMode`), [`aria-pressed`]: `false`,
@@ -255,8 +257,18 @@
       if (this.wanted.pending) this.select(this.wanted.id, true);
     }
 
+    // A click on a shape or a pin of the map: Grist moves its cursor, then sends the row back.
+    selectFromMap(id) {
+      this.wanted = { id, pending: false };
+      this.mapSelection = { id, at: Date.now() };
+      this.host.onSelect(id);
+    }
+
     // Highlights the pin of a row; with pan, the map moves to it and opens its label.
     select(id, pan) {
+      // While drawing, a click on the map must not move the map under the pencil.
+      const fromMap = this.mapSelection && this.mapSelection.id === id && Date.now() - this.mapSelection.at < MAP_SELECTION_MS;
+      if (fromMap && this.editor && this.editor.active) pan = false;
       this.wanted = { id, pending: false };
       if (id === null || id === undefined) {
         this.engine.clearSelection();

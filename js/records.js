@@ -41,7 +41,7 @@
   // valid shape, and a pin when it has valid coordinates; it can be both.
   // Returns { shapes, points, invalid, empty } where invalid lists { id, label, column } of the
   // ignored rows, column being `shape` or `coordinates`, and empty lists { id, name } of the
-  // rows that have no shape and no coordinates yet (the drawing mode can fill them).
+  // rows that have no shape yet, with or without a pin (the drawing mode can fill them).
   function normalize(rows) {
     const shapes = [];
     const points = [];
@@ -68,7 +68,7 @@
       const rawLat = parseValue(row.Latitude);
       const rawLng = parseValue(row.Longitude);
       const noCoordinates = isEmpty(rawLat) && isEmpty(rawLng);
-      if (noCoordinates && !(typeof rawShape === `string` && rawShape.trim()) && empty.length < MAX_EMPTY_ROWS) empty.push({ id: row.id, name });
+      if (!(typeof rawShape === `string` && rawShape.trim()) && empty.length < MAX_EMPTY_ROWS) empty.push({ id: row.id, name });
       // Empty coordinates (or 0 / 0) mean a blank row: nothing to report.
       if (!noCoordinates) {
         const lat = toCoordinate(row.Latitude, 90);

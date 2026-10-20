@@ -37,7 +37,7 @@ The pencil button turns the drawing mode on and off; while it is on, a coloured 
 - Snapping: the cursor is attracted by the corners of neighbouring shapes, so two buildings that touch share their corner. The shapes stay independent rows. Hold Alt to ignore snapping for a moment.
 - Undo: Ctrl+Z (Cmd+Z on a Mac) while the widget has the focus undoes the last 20 actions. The Undo button of Grist works too.
 - A new shape asks for its name, gets the colour `#4A90D9` and is written as a new row. Change its colour in the table.
-- You can also start from the table: type the names (and colours) of the rows first, select a row that has no shape yet, and draw. The shape is then written to that row, without asking for a name. The help line tells which row will receive the shape.
+- You can also start from the table: type the names (and colours) of the rows first, select a row that has no shape yet, and draw. The shape is then written to that row, without asking for a name. The row may already have a pin (Latitude and Longitude): it then keeps its pin and gets its shape, with one label for both. The help line tells which row will receive the shape.
 
 The drawing mode needs write access: the widget asks for the access level "Full". It only uses the table it is attached to. If the table is linked to another widget ("Select by"), a new row does not get the link value: set it in the table.
 
@@ -81,7 +81,7 @@ If your Grist server is not `grist.numerique.gouv.fr`, edit two places in `index
 - `js/app.js`: the map screen. `js/engine.js`: the map, the shapes and the pins. `js/editor.js`: the drawing mode. `js/geometry.js`: reading of the Shape column. `js/records.js`: reading and checking of the rows. `js/menu.js`: catalogue, "Other" dialog, transparency slider. `js/catalog.js`: maps. `js/config.js`: saved settings. `js/colors.js`, `js/i18n.js`, `js/window-link.js`.
 - `data/ign-layers.js`: the IGN layers. `vendor`: Leaflet and Leaflet.markercluster.
 
-Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.4.0`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
+Browsers keep GitHub Pages files for about ten minutes. Scripts and styles are referenced with `?v=0.4.1`: change that number in `index.html`, `window.html`, `catalog.html` and `js/window-link.js` with every release.
 
 Licence: MIT. Leaflet is under the BSD 2-Clause licence and Leaflet.markercluster under the MIT licence.
 
@@ -120,7 +120,7 @@ Le bouton crayon active et désactive le mode dessin ; quand il est actif, un ca
 - Accrochage : le curseur est attiré par les sommets des formes voisines, si bien que deux bâtiments qui se touchent partagent leur sommet. Les formes restent des lignes indépendantes. Maintenez Alt pour ignorer l'accrochage un instant.
 - Annuler : Ctrl+Z (Cmd+Z sur Mac) quand le widget a le focus annule les 20 dernières actions. Le bouton Annuler de Grist fonctionne aussi.
 - Une nouvelle forme demande son nom, reçoit la couleur `#4A90D9` et est écrite comme une nouvelle ligne. Changez sa couleur dans le tableau.
-- Vous pouvez aussi partir du tableau : saisissez d'abord les noms (et les couleurs) des lignes, sélectionnez une ligne qui n'a pas encore de forme, puis dessinez. La forme est alors écrite dans cette ligne, sans demander de nom. La ligne d'aide indique quelle ligne recevra la forme.
+- Vous pouvez aussi partir du tableau : saisissez d'abord les noms (et les couleurs) des lignes, sélectionnez une ligne qui n'a pas encore de forme, puis dessinez. La forme est alors écrite dans cette ligne, sans demander de nom. La ligne peut déjà avoir une épingle (Latitude et Longitude) : elle garde son épingle et reçoit sa forme, avec une seule étiquette pour les deux. La ligne d'aide indique quelle ligne recevra la forme.
 
 Le mode dessin demande l'accès en écriture : le widget demande le niveau d'accès « Complet ». Il n'utilise que le tableau auquel il est rattaché. Si le tableau est lié à un autre widget (« Sélectionner par »), une nouvelle ligne ne reçoit pas la valeur du lien : renseignez-la dans le tableau.
 
@@ -157,6 +157,6 @@ Aucun script externe sauf l'API de plugin Grist, chargée depuis votre serveur G
 
 ### Publier une modification
 
-Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.4.0` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
+Les navigateurs gardent les fichiers de GitHub Pages environ dix minutes. Les scripts et les styles sont appelés avec `?v=0.4.1` : changez ce numéro dans `index.html`, `window.html`, `catalog.html` et `js/window-link.js` à chaque version.
 
 Licence : MIT. Leaflet est sous licence BSD 2-Clause et Leaflet.markercluster sous licence MIT.

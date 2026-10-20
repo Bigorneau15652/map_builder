@@ -238,6 +238,35 @@ const sizeOf = (page, points) => page.evaluate((list) => {
   await page.keyboard.press(`Escape`);
   check(`Escape then leaves the tool`, (await pressedTools()) === 0);
 
+  // A row with a pin (name, comment, coordinates) and no shape receives the building drawn on it.
+  const pinRow = { id: 120, Name: `Mairie`, Description: `Un commentaire`, Latitude: 43.6065, Longitude: 3.8625, Color: `#D32F2F`, Shape: `` };
+  await page.evaluate(({ data, mapping }) => window.__grist.load(data, mapping), {
+    data: [...(await rows(page)).map((row) => ({ ...row, Shape: row.Shape ? JSON.stringify(row.Shape) : `` })), pinRow], mapping: { ...MAPPING, Description: `Description`, Latitude: `Latitude`, Longitude: `Longitude` }
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => window.__grist.selectRow(120));
+  await page.waitForTimeout(500);
+  const centreBefore = await page.evaluate(() => { const c = window.__map.getCenter(); return [c.lat, c.lng, window.__map.getZoom()]; });
+  await use(0);
+  check(`the help line names the row that has a pin`, /Mairie/.test(await page.locator(`#edit-hint`).textContent()));
+  const pinCount = (await rows(page)).length;
+  const building = await at(43.6065, 3.8625);
+  await drag({ x: building.x - 20, y: building.y - 20 }, { x: building.x + 40, y: building.y + 25 });
+  await page.waitForTimeout(600);
+  const mairie = (await rows(page)).find((row) => row.id === 120);
+  check(`the building is drawn on the row of the pin`, Boolean(mairie.Shape) && (await rows(page)).length === pinCount && mairie.Latitude === 43.6065 && mairie.Description === `Un commentaire`);
+  const centreAfter = await page.evaluate(() => { const c = window.__map.getCenter(); return [c.lat, c.lng, window.__map.getZoom()]; });
+  check(`drawing does not recentre the map`, JSON.stringify(centreBefore) === JSON.stringify(centreAfter), JSON.stringify({ centreBefore, centreAfter }));
+
+  // In the drawing mode, a click on a shape does not move the map.
+  await normalMode();
+  const siteCentre = await at(43.612, 3.866);
+  const mapBefore = await page.evaluate(() => { const c = window.__map.getCenter(); return [c.lat, c.lng]; });
+  await page.mouse.click(siteCentre.x, siteCentre.y);
+  await page.waitForTimeout(900);
+  const mapAfter = await page.evaluate(() => { const c = window.__map.getCenter(); return [c.lat, c.lng]; });
+  check(`a click on a shape does not recentre the map while drawing`, JSON.stringify(mapBefore) === JSON.stringify(mapAfter), JSON.stringify({ mapBefore, mapAfter }));
+
   // Escape cancels a name dialog: nothing is written.
   await use(0);
   const beforeCancel = (await rows(page)).length;
